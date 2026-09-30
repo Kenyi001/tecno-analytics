@@ -1,4 +1,4 @@
-name: Ciclo ventas
+name: Ventas del ciclo
 
 on:
   schedule:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ciclo-ventas
+  group: ventas-ciclo
   cancel-in-progress: false
 
 jobs:
@@ -19,16 +19,13 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: job/package-lock.json
+          cache-dependency-path: package-lock.json
       - name: Instalar el trabajo
-        working-directory: job
         run: npm ci
       - name: Instalar Chrome
-        working-directory: job
         run: npx puppeteer browsers install chrome
       - name: Entrar, pedir ventas y subir el día
-        working-directory: job
-        run: node run.mjs
+        run: node reportes/ventas/run.mjs
         env:
           DCR_USER: ${{ secrets.DCR_USER }}
           DCR_PASSWORD: ${{ secrets.DCR_PASSWORD }}

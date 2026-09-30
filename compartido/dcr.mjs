@@ -1,6 +1,6 @@
 import puppeteer from "puppeteer";
-import { LOGIN_URL } from "./ruta-ventas.mjs";
 
+const LOGIN_URL = "https://dcr.imwav.com/login#/";
 const ESPERA_MS = 500;
 const INTENTOS = 40;
 

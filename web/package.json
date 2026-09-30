@@ -1,5 +1,5 @@
 {
-  "name": "tecno-ventas",
+  "name": "tecno-analytics",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@vercel/blob": "^2.3.3",
+    "jszip": "^3.10.1",
     "next": "^15.5.4",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"

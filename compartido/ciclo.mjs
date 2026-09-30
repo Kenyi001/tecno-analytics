@@ -13,6 +13,12 @@ function iso(year, month, day) {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
+export function fechaCorta(isoFecha) {
+  const [year, month, day] = isoFecha.split("-").map(Number);
+  const meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  return `${day} ${meses[month - 1]} ${year}`;
+}
+
 // El ciclo corre del 21 al 20. Si hoy es anterior al 21, el ciclo empezó el 21 del mes pasado.
 export function cicloDe(ahora = new Date()) {
   const hoy = partesBolivia(ahora);
@@ -35,7 +41,7 @@ export function cicloDe(ahora = new Date()) {
   const finEtiqueta = iso(finYear, finMonth, 20);
   const fechaHoy = iso(hoy.year, hoy.month, hoy.day);
   const hasta = fechaHoy < finEtiqueta ? fechaHoy : finEtiqueta;
-  const carpeta = `ciclo_${year}${String(month).padStart(2, "0")}_21-20`;
+  const carpeta = `ventas/ciclo_${year}${String(month).padStart(2, "0")}_21-20`;
   return {
     inicio,
     finEtiqueta,

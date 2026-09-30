@@ -1,8 +1,8 @@
-import { entrarDcr } from "./login.mjs";
+import { entrarDcr } from "../../compartido/dcr.mjs";
 import { bajarExcelVentas } from "./sales.mjs";
 import { armarLibro, leerHojaExport, vistaPublica } from "./book.mjs";
-import { cicloDe } from "./cycle.mjs";
-import { bajarPlantilla, subirDia } from "./blob.mjs";
+import { cicloDe } from "../../compartido/ciclo.mjs";
+import { bajarPlantilla, subirDia } from "../../compartido/blob.mjs";
 
 const corte = setTimeout(() => {
   console.error("corte a los 15 minutos");

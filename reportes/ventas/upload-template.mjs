@@ -12,7 +12,7 @@ if (!process.env.BLOB_READ_WRITE_TOKEN) {
 }
 
 const bytes = await readFile(ruta);
-await put("template/ciclo.xlsx", bytes, {
+await put("ventas/plantilla/ciclo.xlsx", bytes, {
   access: "private",
   token: process.env.BLOB_READ_WRITE_TOKEN,
   addRandomSuffix: false,

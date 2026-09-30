@@ -1,12 +1,12 @@
 {
-  "name": "tecno-ciclo-job",
+  "name": "tecno-analytics",
   "private": true,
   "type": "module",
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "start": "node run.mjs"
+    "start": "node reportes/ventas/run.mjs"
   },
   "dependencies": {
     "@vercel/blob": "^2.3.3",

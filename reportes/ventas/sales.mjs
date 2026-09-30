@@ -3,7 +3,7 @@ import {
   SALES_EXPORT_URL,
   cuerpoVentas,
 } from "./ruta-ventas.mjs";
-import { encabezadosDcr } from "./login.mjs";
+import { encabezadosDcr } from "../../compartido/dcr.mjs";
 
 const ESPERA_TAREA_MS = 10000;
 const INTENTOS_TAREA = 36;
