@@ -1,0 +1,12 @@
+services:
+  - type: cron
+    name: tecno-ciclo-extract
+    runtime: node
+    region: oregon
+    plan: 1c-2g
+    schedule: "0 13 * * *"
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: RUN_TIMEOUT_SECONDS
+        value: "1200"
