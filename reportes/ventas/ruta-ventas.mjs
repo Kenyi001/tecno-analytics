@@ -17,6 +17,9 @@ export const SALES_COUNT_URL =
 export const EXPORT_TASK_LIST_URL =
   "https://hk-paas.transsion.com/mkt-file-service/export/task/list";
 
+export const AVISOS_EXPORT_URL =
+  "https://pfgateway.transsion.com/dcr-file-service/tips/noticeList";
+
 export const LOGIN_URL = "https://dcr.imwav.com/login#/";
 
 // Cuerpo que arma getExportParams: el formulario de la pantalla, con las

@@ -1,4 +1,5 @@
 import {
+  AVISOS_EXPORT_URL,
   EXPORT_TASK_LIST_URL,
   SALES_EXPORT_URL,
   cuerpoVentas,
@@ -44,7 +45,30 @@ async function leerJson(respuesta) {
   }
 }
 
+function idAviso(item) {
+  const id = item?.id ?? item?.taskId;
+  return id == null || id === "" ? null : String(id);
+}
+
+function listaAvisos(data) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.records)) return data.records;
+  return [];
+}
+
+async function leerAvisos(tokens, usuario) {
+  const respuesta = await fetch(AVISOS_EXPORT_URL, { headers: encabezadosDcr(tokens, usuario) });
+  if (respuesta.status === 401 || respuesta.status === 403) {
+    throw new Error("La sesión de DCR fue rechazada al buscar el Excel");
+  }
+  if (!respuesta.ok) throw new Error(`No se pudo ver la lista de exportaciones (${respuesta.status})`);
+  const json = await leerJson(respuesta);
+  return listaAvisos(json?.data);
+}
+
 export async function bajarExcelVentas(tokens, usuario, ciclo) {
+  const previos = new Set((await leerAvisos(tokens, usuario)).map(idAviso).filter(Boolean));
   const respuesta = await fetch(SALES_EXPORT_URL, {
     method: "POST",
     headers: encabezadosDcr(tokens, usuario),
@@ -65,14 +89,38 @@ export async function bajarExcelVentas(tokens, usuario, ciclo) {
   if (!respuesta.ok || json?.success === false || json?.code === "400") {
     throw new Error("DCR no aceptó el pedido de ventas");
   }
-  const tarea = idDeTarea(json?.data) ?? idDeTarea(json);
-  if (tarea == null) {
-    const mensaje = String(json?.message || json?.msg || "");
-    const aviso = mensaje.length <= 80 && !/token|bearer|eyJ/i.test(mensaje) ? mensaje : `len:${mensaje.length}`;
-    console.error(`pedido ${forma(json)} data=${forma(json?.data)} code=${json?.code} success=${json?.success} mensaje=${aviso}`);
+  if (json?.data === true) return esperarAviso(tokens, usuario, previos);
+  const tarea = idDeTarea(json?.data);
+  if (tarea == null || typeof tarea === "boolean") {
+    console.error(`pedido ${forma(json)} data=${forma(json?.data)} code=${json?.code} success=${json?.success}`);
     throw new Error("El pedido de ventas no devolvió una tarea");
   }
   return esperarArchivo(tokens, usuario, tarea);
+}
+
+async function esperarAviso(tokens, usuario, previos) {
+  let idNuevo = null;
+  for (let i = 0; i < INTENTOS_TAREA; i++) {
+    const lista = await leerAvisos(tokens, usuario);
+    if (idNuevo == null) {
+      const nuevo = lista.find((item) => {
+        const id = idAviso(item);
+        return id != null && !previos.has(id);
+      });
+      if (nuevo) idNuevo = idAviso(nuevo);
+    }
+    const item = idNuevo == null ? null : lista.find((aviso) => idAviso(aviso) === idNuevo);
+    const estado = String(item?.taskStatus ?? item?.status ?? "");
+    if (item?.filePath && (estado === "2" || item.isExportSuccess === true)) {
+      console.log("excel de ventas listo");
+      return descargar(item.filePath, tokens, usuario);
+    }
+    if (estado === "3" || item?.isExportSuccess === false) {
+      throw new Error("DCR no pudo armar el Excel de ventas");
+    }
+    await new Promise((r) => setTimeout(r, ESPERA_TAREA_MS));
+  }
+  throw new Error("El Excel de ventas no estuvo listo a tiempo");
 }
 
 async function esperarArchivo(tokens, usuario, tarea) {
