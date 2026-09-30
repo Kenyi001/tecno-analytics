@@ -1,0 +1,16 @@
+{
+  "name": "tecno-ciclo-job",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node run.mjs"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.3.3",
+    "jszip": "^3.10.1",
+    "puppeteer": "^24.23.0"
+  }
+}

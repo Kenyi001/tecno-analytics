@@ -1,0 +1,156 @@
+:root {
+  color: #1c1915;
+  background: #f3efe6;
+  font-family: "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+}
+
+main {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 28px 20px 64px;
+}
+
+h1 {
+  font-size: 28px;
+  font-weight: 650;
+  margin: 0 0 6px;
+}
+
+.sub {
+  margin: 0 0 22px;
+  color: #5c564c;
+}
+
+.barra {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+button, .boton {
+  border: 0;
+  background: #1f6b4a;
+  color: white;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+
+button.secundario {
+  background: white;
+  color: #1c1915;
+  border: 1px solid #d9d1c3;
+}
+
+.paneles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.panel, .tabla-caja, .aviso, form.acceso {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid #e4dccf;
+}
+
+h2 {
+  font-size: 15px;
+  margin: 0 0 12px;
+}
+
+.fila-barra {
+  display: grid;
+  grid-template-columns: 92px 1fr 42px;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.pista {
+  height: 8px;
+  background: #efe8dc;
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.pista span {
+  display: block;
+  height: 100%;
+  background: #1f6b4a;
+}
+
+.hojas {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+}
+
+.hojas li {
+  background: white;
+  border: 1px solid #e4dccf;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.tabla-caja { overflow: auto; max-height: 70vh; }
+
+table {
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 100%;
+}
+
+th, td {
+  border-bottom: 1px solid #eee6da;
+  padding: 6px 8px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  background: #faf7f2;
+}
+
+.aviso { color: #5c564c; }
+
+form.acceso {
+  max-width: 420px;
+  margin: 12vh auto;
+}
+
+label { display: block; margin-bottom: 8px; }
+
+input {
+  width: 100%;
+  font: inherit;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #d9d1c3;
+  margin-bottom: 12px;
+}
+
+.error { color: #8a2e2e; }
+
+@media (max-width: 800px) {
+  .paneles { grid-template-columns: 1fr; }
+}
