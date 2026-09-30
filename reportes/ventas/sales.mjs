@@ -9,11 +9,30 @@ const ESPERA_TAREA_MS = 10000;
 const INTENTOS_TAREA = 36;
 
 function idDeTarea(data) {
-  if (typeof data === "string" || typeof data === "number") return data;
-  if (data && typeof data === "object") {
-    return data.taskId ?? data.id ?? data.taskid ?? null;
+  if (typeof data === "string" || typeof data === "number") return data === "" ? null : data;
+  if (!data || typeof data !== "object") return null;
+  const directo = data.taskId ?? data.taskID ?? data.id ?? data.taskid ?? data.exportTaskId ?? data.taskNo;
+  if (directo != null && directo !== "") return directo;
+  for (const valor of Object.values(data)) {
+    if (valor && typeof valor === "object") {
+      const anidado = idDeTarea(valor);
+      if (anidado != null) return anidado;
+    }
   }
   return null;
+}
+
+function forma(valor) {
+  if (valor == null) return "null";
+  if (Array.isArray(valor)) return `lista:${valor.length}`;
+  if (typeof valor === "object") return `objeto:${Object.keys(valor).slice(0, 12).join("|")}`;
+  if (typeof valor === "number") return "numero";
+  if (typeof valor === "string") {
+    if (valor.startsWith("http")) return "url";
+    if (/^\d+$/.test(valor)) return `digitos:${valor.length}`;
+    return `texto:${valor.length}`;
+  }
+  return typeof valor;
 }
 
 async function leerJson(respuesta) {
@@ -46,8 +65,13 @@ export async function bajarExcelVentas(tokens, usuario, ciclo) {
   if (!respuesta.ok || json?.success === false || json?.code === "400") {
     throw new Error("DCR no aceptó el pedido de ventas");
   }
-  const tarea = idDeTarea(json?.data);
-  if (tarea == null) throw new Error("El pedido de ventas no devolvió una tarea");
+  const tarea = idDeTarea(json?.data) ?? idDeTarea(json);
+  if (tarea == null) {
+    const mensaje = String(json?.message || json?.msg || "");
+    const aviso = mensaje.length <= 80 && !/token|bearer|eyJ/i.test(mensaje) ? mensaje : `len:${mensaje.length}`;
+    console.error(`pedido ${forma(json)} data=${forma(json?.data)} code=${json?.code} success=${json?.success} mensaje=${aviso}`);
+    throw new Error("El pedido de ventas no devolvió una tarea");
+  }
   return esperarArchivo(tokens, usuario, tarea);
 }
 
