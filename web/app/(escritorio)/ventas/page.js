@@ -94,9 +94,18 @@ export default function Ventas() {
               : "Ventas del ciclo, del 21 al 20."}
           </p>
         </div>
-        <button type="button" className="btn" onClick={actualizar} disabled={!datos || actualizando}>
-          {actualizando ? `Actualizando ventas hasta ${hasta}` : `Actualizar hasta ${hasta}`}
-        </button>
+        <div className="actualizar">
+          <button type="button" className="btn" onClick={actualizar} disabled={!datos || actualizando}>
+            {actualizando ? `Actualizando ventas hasta ${hasta}` : `Actualizar hasta ${hasta}`}
+          </button>
+          {datos?.vista?.actualizadoTexto ? (
+            <p className="sub">
+              Última actualización {datos.vista.actualizadoTexto}. Datos del Excel hasta {datos.vista.datosTexto}.
+            </p>
+          ) : datos ? (
+            <p className="sub">Todavía no hay una actualización de este ciclo.</p>
+          ) : null}
+        </div>
       </div>
       {aviso ? <p className="aviso fallo">{aviso}</p> : null}
       {error ? <p className="aviso fallo">{error}</p> : null}
@@ -140,6 +149,7 @@ export default function Ventas() {
               <thead>
                 <tr>
                   <th>Día</th>
+                  <th>Actualizado</th>
                   <th />
                 </tr>
               </thead>
@@ -147,6 +157,7 @@ export default function Ventas() {
                 {datos.archivos.map((archivo) => (
                   <tr key={archivo.dia}>
                     <td>{archivo.texto}</td>
+                    <td>{archivo.subidoTexto}</td>
                     <td className="derecha">
                       <Link href={`/ventas/libro?dia=${archivo.dia}`}>Abrir</Link>
                     </td>

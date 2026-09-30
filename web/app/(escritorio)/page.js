@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { REPORTES } from "../../lib/reportes";
-import { fechaCorta } from "../../lib/ciclo";
 import { resumenVentas } from "../../lib/blob";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +25,9 @@ export default async function Inicio() {
         {REPORTES.map((reporte) => {
           let estado = "Todavía no hay archivo. Se actualiza a las 9:00.";
           if (fallo) estado = "No se pudo consultar el archivo.";
-          else if (ventas?.vista) estado = `Hay archivo hasta ${fechaCorta(ventas.vista.dia)}.`;
+          else if (ventas?.vista) {
+            estado = `Última actualización ${ventas.vista.actualizadoTexto}. Datos del Excel hasta ${ventas.vista.datosTexto}.`;
+          }
           return (
             <Link key={reporte.id} href={reporte.ruta} className="tarjeta-reporte">
               <span className="punto" />

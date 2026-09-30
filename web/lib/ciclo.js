@@ -13,6 +13,22 @@ function iso(year, month, day) {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
+export function fechaHoraBolivia(instante) {
+  const fecha = new Date(instante);
+  if (Number.isNaN(fecha.getTime())) return "";
+  const partes = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/La_Paz",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(fecha);
+  const leer = (tipo) => partes.find((p) => p.type === tipo).value;
+  return `${fechaCorta(`${leer("year")}-${leer("month")}-${leer("day")}`)}, ${leer("hour")}:${leer("minute")}`;
+}
+
 export function fechaCorta(isoFecha) {
   const [year, month, day] = isoFecha.split("-").map(Number);
   const meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];

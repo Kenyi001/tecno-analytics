@@ -1,5 +1,5 @@
 import { get, list } from "@vercel/blob";
-import { cicloDe, fechaCorta } from "./ciclo";
+import { cicloDe, fechaCorta, fechaHoraBolivia } from "./ciclo";
 
 function token() {
   const valor = process.env.BLOB_READ_WRITE_TOKEN;
@@ -32,7 +32,12 @@ export async function resumenVentas() {
     .filter((blob) => /\/\d{4}-\d{2}-\d{2}\.xlsx$/.test(blob.pathname))
     .map((blob) => {
       const dia = blob.pathname.split("/").pop().replace(/\.xlsx$/, "");
-      return { dia, texto: fechaCorta(dia), subido: blob.uploadedAt };
+      return {
+        dia,
+        texto: fechaCorta(dia),
+        subido: blob.uploadedAt,
+        subidoTexto: fechaHoraBolivia(blob.uploadedAt),
+      };
     })
     .sort((a, b) => b.dia.localeCompare(a.dia));
   const jsons = blobs
@@ -43,9 +48,13 @@ export async function resumenVentas() {
     const bytes = await bajar(jsons[0].pathname);
     if (bytes) {
       const completo = JSON.parse(bytes.toString("utf8"));
+      const dia = jsons[0].pathname.split("/").pop().replace(/\.json$/, "");
+      const momento = completo.generado || jsons[0].uploadedAt;
       vista = {
         generado: completo.generado,
-        dia: jsons[0].pathname.split("/").pop().replace(/\.json$/, ""),
+        dia,
+        datosTexto: fechaCorta(dia),
+        actualizadoTexto: fechaHoraBolivia(momento),
         conteos: completo.conteos,
       };
     }
