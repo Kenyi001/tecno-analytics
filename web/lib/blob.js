@@ -50,11 +50,14 @@ export async function resumenVentas() {
       const completo = JSON.parse(bytes.toString("utf8"));
       const dia = jsons[0].pathname.split("/").pop().replace(/\.json$/, "");
       const momento = completo.generado || jsons[0].uploadedAt;
+      const excel = archivos.find((archivo) => archivo.dia === dia);
+      const diferencia = excel?.subido && momento ? new Date(excel.subido).getTime() - new Date(momento).getTime() : 0;
       vista = {
         generado: completo.generado,
         dia,
         datosTexto: fechaCorta(dia),
         actualizadoTexto: fechaHoraBolivia(momento),
+        calculadoTexto: diferencia > 3 * 60 * 1000 ? fechaHoraBolivia(excel.subido) : "",
         conteos: completo.conteos,
       };
     }

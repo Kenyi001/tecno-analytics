@@ -99,9 +99,16 @@ export default function Ventas() {
             {actualizando ? `Actualizando ventas hasta ${hasta}` : `Actualizar hasta ${hasta}`}
           </button>
           {datos?.vista?.actualizadoTexto ? (
-            <p className="sub">
-              Última actualización {datos.vista.actualizadoTexto}. Datos del Excel hasta {datos.vista.datosTexto}.
-            </p>
+            <>
+              <p className="sub">
+                Última actualización {datos.vista.actualizadoTexto}. Datos del Excel hasta {datos.vista.datosTexto}.
+              </p>
+              <p className="sub">
+                {datos.vista.calculadoTexto
+                  ? `Reportes calculados ${datos.vista.calculadoTexto}.`
+                  : "Los reportes muestran el cálculo guardado en el archivo."}
+              </p>
+            </>
           ) : datos ? (
             <p className="sub">Todavía no hay una actualización de este ciclo.</p>
           ) : null}
