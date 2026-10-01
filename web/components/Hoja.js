@@ -72,8 +72,11 @@ function conjuntoInicial(flags) {
   return new Set((flags || []).flatMap((oculta, indice) => (oculta ? [indice] : [])));
 }
 
+const ZOOM = [0.5, 0.67, 0.8, 1, 1.25, 1.5, 2];
+
 export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos, merges, graficos, imagenes, indices, columnasOcultas, filasOcultas }) {
   const [scroll, setScroll] = useState(0);
+  const [zoom, setZoom] = useState(1);
   const archivoCol = useMemo(() => conjuntoInicial(columnasOcultas), [columnasOcultas]);
   const archivoFila = useMemo(() => conjuntoInicial(filasOcultas), [filasOcultas]);
   const [ocultasCol, setOcultasCol] = useState(() => conjuntoInicial(columnasOcultas));
@@ -208,6 +211,14 @@ export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos
       return siguiente;
     });
   }
+
+  function moverZoom(delta) {
+    setZoom((previo) => {
+      const actual = ZOOM.findIndex((nivel) => Math.abs(nivel - previo) < 0.001);
+      const desde = actual >= 0 ? actual : ZOOM.indexOf(1);
+      return ZOOM[Math.max(0, Math.min(ZOOM.length - 1, desde + delta))];
+    });
+  }
   const anchoTotal = NUMERO + (anchos || []).reduce((suma, ancho, indice) => suma + (ocultasCol.has(indice) ? 0 : ancho), 0);
   const filaEn = (posicion) => (indices ? indices[posicion] : posicion);
   const antes = indices ? inicioReal * 22 : prefijo[inicioReal] || 0;
@@ -240,6 +251,17 @@ export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos
     <>
     <div className="ocultas-barra">
       <span>Marca las letras y los números. Con Mayús marcas la serie. Esc quita la marca. Después pulsa Ocultar. Gris: venía oculta en el Excel. Azul: la ocultaste en esta sesión.</span>
+      <span className="zoom-hoja" title="Zoom de la hoja">
+        <button type="button" className="chip" onClick={() => moverZoom(-1)} disabled={zoom <= ZOOM[0]} aria-label="Alejar">
+          −
+        </button>
+        <button type="button" className="chip" onClick={() => setZoom(1)} aria-label="Zoom al 100%">
+          {Math.round(zoom * 100)}%
+        </button>
+        <button type="button" className="chip" onClick={() => moverZoom(1)} disabled={zoom >= ZOOM[ZOOM.length - 1]} aria-label="Acercar">
+          +
+        </button>
+      </span>
       <button type="button" className="chip" onClick={marcarTodo}>
         Marcar todo
       </button>
@@ -301,7 +323,7 @@ export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos
       ) : null}
     </div>
     <div className="lienzo" onScroll={(evento) => setScroll(evento.currentTarget.scrollTop)}>
-      <div className="hoja-real" style={{ width: anchoTotal }}>
+      <div className="hoja-real" style={{ width: anchoTotal, zoom }}>
         <table>
           <colgroup>
             <col style={{ width: NUMERO }} />

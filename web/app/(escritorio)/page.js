@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { REPORTES } from "../../lib/reportes";
-import { resumenVentas } from "../../lib/blob";
+import { resumenCobertura, resumenVentas } from "../../lib/blob";
 
 export const dynamic = "force-dynamic";
 
 export default async function Inicio() {
   let ventas = null;
+  let cobertura = null;
   let fallo = false;
   try {
-    ventas = await resumenVentas();
+    [ventas, cobertura] = await Promise.all([resumenVentas(), resumenCobertura()]);
   } catch {
     fallo = true;
   }
@@ -23,10 +24,17 @@ export default async function Inicio() {
       </div>
       <div className="rejilla-tarjetas">
         {REPORTES.map((reporte) => {
-          let estado = "Todavía no hay archivo. Se actualiza a las 9:00.";
-          if (fallo) estado = "No se pudo consultar el archivo.";
-          else if (ventas?.vista) {
-            estado = `Última actualización ${ventas.vista.actualizadoTexto}. Datos del Excel hasta ${ventas.vista.datosTexto}.`;
+          let estado = "Todavía no hay archivo.";
+          if (reporte.id === "ventas") {
+            estado = "Todavía no hay archivo. Se actualiza a las 9:00.";
+            if (fallo) estado = "No se pudo consultar el archivo.";
+            else if (ventas?.vista) {
+              estado = `Última actualización ${ventas.vista.actualizadoTexto}. Datos del Excel hasta ${ventas.vista.datosTexto}.`;
+            }
+          } else if (reporte.id === "cobertura") {
+            if (cobertura?.actualizadoTexto) {
+              estado = `Última actualización ${cobertura.actualizadoTexto}. Referencia ${cobertura.referenciaTexto}.`;
+            } else if (fallo) estado = "No se pudo consultar la cobertura.";
           }
           return (
             <Link key={reporte.id} href={reporte.ruta} className="tarjeta-reporte">

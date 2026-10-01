@@ -1,0 +1,72 @@
+{
+  "generado": "2026-10-01T21:17:14.895Z",
+  "ultimaFilaDatos": 113070,
+  "filasDatos": 113069,
+  "tiendas": 1420,
+  "top300": 293,
+  "referencia": "2026-09-30",
+  "diasFaltan": 20,
+  "cierre": "2026-10-20",
+  "grupos": {
+    "lk7": {
+      "todas": {
+        "cubiertas": 324,
+        "nuevas7": 15,
+        "ritmo": 2.1,
+        "cierre": 367,
+        "total": 1420,
+        "pct": 22.8,
+        "cantidad": 2456
+      },
+      "top300": {
+        "cubiertas": 208,
+        "nuevas7": 5,
+        "ritmo": 0.7,
+        "cierre": 222,
+        "total": 293,
+        "pct": 71,
+        "cantidad": 1839
+      }
+    },
+    "lambo": {
+      "todas": {
+        "cubiertas": 299,
+        "nuevas7": 13,
+        "ritmo": 1.9,
+        "cierre": 336,
+        "total": 1420,
+        "pct": 21.1,
+        "cantidad": 2192
+      },
+      "top300": {
+        "cubiertas": 190,
+        "nuevas7": 5,
+        "ritmo": 0.7,
+        "cierre": 204,
+        "total": 293,
+        "pct": 64.8,
+        "cantidad": 1621
+      }
+    },
+    "lk7k": {
+      "todas": {
+        "cubiertas": 549,
+        "nuevas7": 2,
+        "ritmo": 0.3,
+        "cierre": 555,
+        "total": 1420,
+        "pct": 38.7,
+        "cantidad": 9105
+      },
+      "top300": {
+        "cubiertas": 234,
+        "nuevas7": 0,
+        "ritmo": 0,
+        "cierre": 234,
+        "total": 293,
+        "pct": 79.9,
+        "cantidad": 6497
+      }
+    }
+  }
+}

@@ -1,6 +1,14 @@
-import { get, list } from "@vercel/blob";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { get, list, put } from "@vercel/blob";
 import { cicloDe, fechaCorta, fechaHoraBolivia } from "./ciclo";
 import { leerHoja } from "./libro";
+
+export const RUTA_COBERTURA = "cobertura/actual.json";
+
+function coberturaBase() {
+  return JSON.parse(readFileSync(join(process.cwd(), "data", "cobertura.json"), "utf8"));
+}
 
 function contarColumna(columnas, filas, nombre) {
   if (!Array.isArray(columnas) || !Array.isArray(filas)) return null;
@@ -321,4 +329,43 @@ export async function consultarCodigo(codigo) {
     mix: ventasMix,
     total: propias.length,
   };
+}
+
+function vistaCobertura(completo, origen) {
+  const referencia = completo.referencia || "";
+  return {
+    generado: completo.generado,
+    origen,
+    referencia,
+    referenciaTexto: referencia ? fechaCorta(referencia) : "",
+    cierre: completo.cierre || "",
+    cierreTexto: completo.cierre ? fechaCorta(completo.cierre) : "",
+    actualizadoTexto: completo.generado ? fechaHoraBolivia(completo.generado) : "",
+    tiendas: completo.tiendas || 0,
+    top300: completo.top300 || 0,
+    diasFaltan: completo.diasFaltan || 0,
+    filasDatos: completo.filasDatos || 0,
+    grupos: completo.grupos || {},
+  };
+}
+
+export async function resumenCobertura() {
+  try {
+    const bytes = await bajar(RUTA_COBERTURA);
+    if (bytes) return vistaCobertura(JSON.parse(bytes.toString("utf8")), "blob");
+  } catch {
+    // Si no hay Blob, se usa el cálculo guardado en el repo.
+  }
+  return vistaCobertura(coberturaBase(), "base");
+}
+
+export async function subirCobertura(json) {
+  await put(RUTA_COBERTURA, JSON.stringify(json), {
+    access: "private",
+    token: token(),
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    contentType: "application/json",
+  });
+  return vistaCobertura(json, "blob");
 }

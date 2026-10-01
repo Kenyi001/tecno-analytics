@@ -282,6 +282,8 @@ h2 { margin: 0 0 12px; font-size: 14px; font-weight: 650; }
 }
 .consulta-forma input:focus { outline: 2px solid #009bde; border-color: #009bde; }
 .consulta-resultado { display: grid; gap: 8px; }
+.zoom-hoja { display: inline-flex; align-items: center; gap: 4px; }
+.zoom-hoja .chip { min-width: 34px; justify-content: center; }
 .chip.accion { background: #111111; color: white; border-color: #111111; }
 .chip.accion:hover { background: #333333; }
 .chip:disabled { opacity: 0.45; cursor: default; }
@@ -333,19 +335,24 @@ h2 { margin: 0 0 12px; font-size: 14px; font-weight: 650; }
 .hoja-real tr.oculta { display: none; }
 .grafico {
   position: absolute;
-  z-index: 3;
+  z-index: 4;
   pointer-events: none;
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding: 8px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.94);
+  background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   box-shadow: 0 1px 2px rgba(17, 17, 17, 0.06);
+  isolation: isolate;
 }
-.grafico strong { font-size: 12px; font-weight: 700; }
+.grafico strong { font-size: 12px; font-weight: 700; background: #ffffff; }
+.grafico .barra-fila,
+.grafico .col-item { background: #ffffff; }
+.grafico .barra-fila span,
+.grafico .col-item span { background: #ffffff; }
 .leyenda { display: flex; flex-wrap: wrap; gap: 8px; color: #6b7280; font-size: 10px; }
 .leyenda i { display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 2px; }
 .barras, .columnas { flex: 1; min-height: 0; display: flex; gap: 3px; }
