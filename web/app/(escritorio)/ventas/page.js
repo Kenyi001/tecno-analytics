@@ -12,44 +12,82 @@ function partesDe(items) {
   return partes;
 }
 
-function tinta(hex) {
-  const n = Number.parseInt(hex.slice(1), 16);
-  const luma = (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
-  return luma > 0.62 ? "#003366" : "#ffffff";
+const COLOR_CLAVE = "#c2410c";
+const COLOR_MIX = "#94a3b8";
+
+function esClave(nombre) {
+  return /^lk7k?$/i.test(String(nombre || "").trim());
 }
 
-function Corte({ titulo, nota, items, colores }) {
-  const partes = partesDe(items);
-  const total = items.reduce((suma, item) => suma + item.ventas, 0);
+function anchosDe(grupos, total) {
+  if (!total) return grupos.map(() => 0);
+  const anchos = grupos.map((grupo) => {
+    const suma = grupo.partes.reduce((acumulado, parte) => acumulado + parte.ventas, 0);
+    return Math.round((suma / total) * 100);
+  });
+  anchos[anchos.length - 1] += 100 - anchos.reduce((acumulado, ancho) => acumulado + ancho, 0);
+  return anchos;
+}
+
+function Cruce({ titulo, nota, grupos, total }) {
+  const anchos = anchosDe(grupos, total);
   return (
-    <article className="panel corte">
+    <article className="panel bloque">
       <h2>{titulo}</h2>
       <p className="sub explicacion">{nota}</p>
-      <div className="corte-riel">
-        {partes.map((item, indice) => (
-          <span
-            key={item.nombre}
-            className="corte-trozo"
-            style={{ width: `${item.parte}%`, background: colores[indice], color: tinta(colores[indice]) }}
-          >
-            {item.parte >= 14 ? `${item.parte}%` : ""}
-          </span>
-        ))}
-      </div>
+      <ul className="cruce">
+        {grupos.map((grupo, indice) => {
+          const suma = grupo.partes.reduce((acumulado, parte) => acumulado + parte.ventas, 0);
+          const partes = partesDe(grupo.partes);
+          return (
+            <li key={grupo.nombre}>
+              <div className="cruce-cabeza">
+                <strong>{grupo.nombre}</strong>
+                <span>
+                  Total {suma} · {anchos[indice]}% del reporte
+                </span>
+              </div>
+              <div className="cruce-pista">
+                <div className="cruce-barra" style={{ width: `${Math.max(0, anchos[indice])}%` }}>
+                  {partes.map((parte) => (
+                    <span
+                      key={parte.nombre}
+                      style={{
+                        width: `${parte.parte}%`,
+                        background: parte.nombre === "Clave" ? COLOR_CLAVE : COLOR_MIX,
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="cruce-detalle">
+                {partes.map((parte) => (
+                  <span key={parte.nombre}>
+                    <i style={{ background: parte.nombre === "Clave" ? COLOR_CLAVE : COLOR_MIX }} />
+                    {parte.nombre} {parte.ventas} · {parte.parte}% de {grupo.nombre}
+                  </span>
+                ))}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
       <div className="corte-leyenda">
-        {partes.map((item, indice) => (
-          <span key={item.nombre}>
-            <i style={{ background: colores[indice] }} />
-            <strong>{item.nombre}</strong> {item.ventas} · {item.parte}%
-          </span>
-        ))}
+        <span>
+          <i style={{ background: COLOR_CLAVE }} />
+          Clave, LK7 y LK7K
+        </span>
+        <span>
+          <i style={{ background: COLOR_MIX }} />
+          MIX, los demás modelos
+        </span>
         <strong className="corte-total">Total {total}</strong>
       </div>
     </article>
   );
 }
 
-function Barras({ items }) {
+function Barras({ items, colorDe }) {
   const suma = items.reduce((total, item) => total + item.ventas, 0) || 1;
   return (
     <ul className="barras">
@@ -59,7 +97,7 @@ function Barras({ items }) {
           <li key={item.nombre}>
             <span className="barra-nombre">{item.nombre}</span>
             <span className="barra-riel">
-              <span style={{ width: `${parte}%` }} />
+              <span style={{ width: `${parte}%`, background: colorDe?.(item.nombre) }} />
             </span>
             <span className="barra-num">
               {item.ventas} · {parte}%
@@ -142,8 +180,7 @@ export default function Ventas() {
   const conteos = datos?.vista?.conteos;
   const modelos = conteos?.porModelo || [];
   const departamentos = conteos?.porEstado || [];
-  const areas = conteos?.porArea;
-  const claves = conteos?.porClave || [];
+  const cruce = conteos?.porCruce;
   const sumaModelos = modelos.reduce((suma, item) => suma + item.ventas, 0);
   const rango =
     datos?.ciclo && datos?.vista ? `${datos.ciclo.inicioTexto} – ${datos.vista.datosTexto}` : "";
@@ -202,8 +239,15 @@ export default function Ventas() {
           <h2>{rango ? `Reporte del ${rango}` : "Reporte del ciclo"}</h2>
           {datos.vista && conteos ? (
             <div className="reporte-actual">
-              <p className="sub">Total {conteos.registros} registros.</p>
-              <Link href={`/ventas/libro?dia=${datos.vista.dia}`}>Abrir</Link>
+              <div>
+                <p className="sub">Total {conteos.registros} registros.</p>
+                <p className="sub">
+                  Abre el libro de este reporte, del {datos.ciclo.inicioTexto} al {datos.vista.datosTexto}, en el navegador.
+                </p>
+              </div>
+              <Link className="btn" href={`/ventas/libro?dia=${datos.vista.dia}`}>
+                Abrir el Excel
+              </Link>
             </div>
           ) : (
             <p className="sub">Todavía no hay un archivo de este ciclo.</p>
@@ -212,29 +256,19 @@ export default function Ventas() {
       ) : null}
       {conteos ? (
         <>
-          <div className="dos-conteos cortes">
-            {areas ? (
-              <Corte
-                titulo={`Vendedores TECNO y mercado · ${rango}`}
-                nota="En la misma barra. Azul oscuro es TECNO, Area Sales Manager. Azul claro es el mercado."
-                items={areas}
-                colores={["#003366", "#8ecae6"]}
-              />
-            ) : (
-              <article className="panel">
-                <h2>Vendedores TECNO y mercado · {rango}</h2>
-                <p className="sub">Esa columna no está en el archivo.</p>
-              </article>
-            )}
-            {claves.length ? (
-              <Corte
-                titulo={`Modelos clave y MIX · ${rango}`}
-                nota="La clave, LK7 y LK7K, va resaltada. El MIX son los demás modelos."
-                items={claves}
-                colores={["#c2410c", "#94a3b8"]}
-              />
-            ) : null}
-          </div>
+          {cruce ? (
+            <Cruce
+              titulo={`Vendedores TECNO y mercado · ${rango}`}
+              nota="Cada barra es un grupo. TECNO es Area Sales Manager y el mercado es el resto. Dentro de la barra, el naranja es la clave y el gris es el MIX. El largo es la parte de ese grupo en el reporte."
+              grupos={cruce}
+              total={conteos.registros}
+            />
+          ) : (
+            <article className="panel bloque">
+              <h2>Vendedores TECNO y mercado · {rango}</h2>
+              <p className="sub">Esa columna no está en el archivo.</p>
+            </article>
+          )}
           <div className="numeros">
             <article>
               <span>Registros</span>
@@ -250,10 +284,12 @@ export default function Ventas() {
               <h2>Modelos · {rango}</h2>
               <p className="sub explicacion">
                 {modelos.length
-                  ? `Están los ${modelos.length} modelos. Sumados dan ${sumaModelos} registros. El porcentaje es sobre ese total.`
+                  ? `Están los ${modelos.length} modelos. Sumados dan ${sumaModelos} registros. El porcentaje es sobre ese total. Naranja es clave, LK7 y LK7K. Gris es el MIX.`
                   : "Sin registros."}
               </p>
-              {modelos.length ? <Barras items={modelos} /> : null}
+              {modelos.length ? (
+                <Barras items={modelos} colorDe={(nombre) => (esClave(nombre) ? COLOR_CLAVE : COLOR_MIX)} />
+              ) : null}
             </article>
             <article className="panel">
               <h2>Departamentos · {rango}</h2>

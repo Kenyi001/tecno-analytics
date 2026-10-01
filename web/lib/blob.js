@@ -36,6 +36,26 @@ function cortarColumna(columnas, filas, nombre, grupoDe, orden) {
   return orden.map((nombreItem) => ({ nombre: nombreItem, ventas: cuentas.get(nombreItem) || 0 }));
 }
 
+function cruzarColumnas(columnas, filas) {
+  if (!Array.isArray(columnas) || !Array.isArray(filas)) return null;
+  const iPos = columnas.indexOf("Position");
+  const iMod = columnas.indexOf("Model");
+  if (iPos < 0 || iMod < 0) return null;
+  const grupos = ["TECNO", "Mercado"];
+  const partes = ["Clave", "MIX"];
+  const cuentas = new Map(grupos.map((grupo) => [grupo, new Map(partes.map((parte) => [parte, 0]))]));
+  for (const fila of filas) {
+    const grupo = grupoPosicion(fila?.[iPos]);
+    const parte = grupoModelo(fila?.[iMod]);
+    const mapa = cuentas.get(grupo);
+    mapa.set(parte, (mapa.get(parte) || 0) + 1);
+  }
+  return grupos.map((nombre) => ({
+    nombre,
+    partes: partes.map((parte) => ({ nombre: parte, ventas: cuentas.get(nombre).get(parte) || 0 })),
+  }));
+}
+
 function token() {
   const valor = process.env.BLOB_READ_WRITE_TOKEN;
   if (!valor) throw new Error("Falta el token del Blob");
@@ -98,6 +118,7 @@ export async function resumenVentas() {
           porModelo: contarColumna(completo.columnas, completo.filas, "Model") || completo.conteos?.porModelo,
           porArea: cortarColumna(completo.columnas, completo.filas, "Position", grupoPosicion, ["TECNO", "Mercado"]),
           porClave: cortarColumna(completo.columnas, completo.filas, "Model", grupoModelo, ["Clave", "MIX"]),
+          porCruce: cruzarColumnas(completo.columnas, completo.filas),
         },
       };
     }

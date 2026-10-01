@@ -150,11 +150,19 @@ h2 { margin: 0 0 12px; font-size: 14px; font-weight: 650; }
 .lista-archivos { margin: 0 0 12px; }
 .reporte-actual { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .reporte-actual .sub { margin: 0; }
-.cortes { margin-bottom: 12px; }
-.corte-riel { display: flex; height: 36px; border-radius: 8px; overflow: hidden; background: #f4f5f6; }
-.corte-trozo { display: flex; align-items: center; justify-content: center; min-width: 0; color: white; font-size: 13px; font-weight: 650; }
-.corte-leyenda { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin-top: 10px; color: #374151; font-variant-numeric: tabular-nums; }
-.corte-leyenda i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 99px; }
+.reporte-actual div .sub + .sub { margin-top: 4px; }
+.reporte-actual .btn { flex: none; }
+.cruce { list-style: none; margin: 0 0 4px; padding: 0; display: grid; gap: 16px; }
+.cruce-cabeza, .cruce-detalle, .corte-leyenda { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.cruce-cabeza { justify-content: space-between; margin-bottom: 6px; }
+.cruce-cabeza span, .cruce-detalle { color: #374151; font-variant-numeric: tabular-nums; }
+.cruce-detalle { margin-top: 6px; }
+.cruce-pista { height: 28px; border-radius: 8px; background: #f4f5f6; overflow: hidden; }
+.cruce-barra { display: flex; height: 100%; }
+.cruce-barra span { display: block; height: 100%; flex: none; }
+.corte-leyenda { margin-top: 14px; color: #374151; font-variant-numeric: tabular-nums; }
+.bloque { margin-bottom: 12px; }
+.corte-leyenda i, .cruce-detalle i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 99px; }
 .corte-leyenda strong { font-weight: 650; }
 .corte-total { margin-left: auto; }
 

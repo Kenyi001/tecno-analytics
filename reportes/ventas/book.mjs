@@ -266,6 +266,25 @@ function grupoModelo(valor) {
   return /^lk7k?$/i.test(String(valor || "").trim()) ? "Clave" : "MIX";
 }
 
+function cruzar(filas) {
+  const iPos = filas[0].indexOf("Position");
+  const iMod = filas[0].indexOf("Model");
+  if (iPos < 0 || iMod < 0) return null;
+  const grupos = ["TECNO", "Mercado"];
+  const partes = ["Clave", "MIX"];
+  const cuentas = new Map(grupos.map((grupo) => [grupo, new Map(partes.map((parte) => [parte, 0]))]));
+  for (const fila of filas.slice(1)) {
+    const grupo = grupoPosicion(fila[iPos]);
+    const parte = grupoModelo(fila[iMod]);
+    const mapa = cuentas.get(grupo);
+    mapa.set(parte, (mapa.get(parte) || 0) + 1);
+  }
+  return grupos.map((nombre) => ({
+    nombre,
+    partes: partes.map((parte) => ({ nombre: parte, ventas: cuentas.get(nombre).get(parte) || 0 })),
+  }));
+}
+
 function cortar(filas, nombre, grupoDe, orden) {
   const indice = filas[0].indexOf(nombre);
   if (indice < 0) return null;
@@ -294,6 +313,7 @@ export function vistaPublica(filas, ciclo, hojas) {
       porEstado: contar(filas, "State"),
       porArea: cortar(filas, "Position", grupoPosicion, ["TECNO", "Mercado"]),
       porClave: cortar(filas, "Model", grupoModelo, ["Clave", "MIX"]),
+      porCruce: cruzar(filas),
     },
   };
 }
