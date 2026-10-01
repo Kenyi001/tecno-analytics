@@ -12,8 +12,8 @@ function partesDe(items) {
   return partes;
 }
 
-const COLOR_CLAVE = "#c2410c";
-const COLOR_MIX = "#94a3b8";
+const COLOR_CLAVE = "#003366";
+const COLOR_MIX = "#8ecae6";
 
 function esClave(nombre) {
   return /^lk7k?$/i.test(String(nombre || "").trim());
@@ -280,7 +280,7 @@ export default function Ventas() {
           {cruce ? (
             <Cruce
               titulo={`Vendedores TECNO y mercado · ${rango}`}
-              nota="Cada barra es un grupo. TECNO es Area Sales Manager y el mercado es el resto. Dentro de la barra, el naranja es la clave y el gris es el MIX. El largo es la parte de ese grupo en el reporte."
+              nota="Cada barra es un grupo. TECNO es Area Sales Manager y el mercado es el resto. Dentro de la barra, el azul oscuro es la clave y el azul claro es el MIX. El largo es la parte de ese grupo en el reporte."
               grupos={cruce}
               total={conteos.registros}
             />
@@ -314,7 +314,7 @@ export default function Ventas() {
               <h2>Ranking de modelos · {rango}</h2>
               <p className="sub explicacion">
                 {modelos.length
-                  ? `Están los ${modelos.length} modelos. Sumados dan ${sumaModelos} registros. El porcentaje es sobre ese total. Naranja es clave, LK7 y LK7K. Gris es el MIX.`
+                  ? `Están los ${modelos.length} modelos. Sumados dan ${sumaModelos} registros. El porcentaje es sobre ese total. Azul oscuro es clave, LK7 y LK7K. Azul claro es el MIX.`
                   : "Sin registros."}
               </p>
               {modelos.length ? (
