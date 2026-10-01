@@ -1,6 +1,20 @@
 import { get, list } from "@vercel/blob";
 import { cicloDe, fechaCorta, fechaHoraBolivia } from "./ciclo";
 
+function contarColumna(columnas, filas, nombre) {
+  if (!Array.isArray(columnas) || !Array.isArray(filas)) return null;
+  const indice = columnas.indexOf(nombre);
+  if (indice < 0) return null;
+  const mapa = new Map();
+  for (const fila of filas) {
+    const clave = String(fila?.[indice] ?? "").trim() || "(sin dato)";
+    mapa.set(clave, (mapa.get(clave) || 0) + 1);
+  }
+  return [...mapa.entries()]
+    .map(([nombreItem, ventas]) => ({ nombre: nombreItem, ventas }))
+    .sort((a, b) => b.ventas - a.ventas || a.nombre.localeCompare(b.nombre, "es"));
+}
+
 function token() {
   const valor = process.env.BLOB_READ_WRITE_TOKEN;
   if (!valor) throw new Error("Falta el token del Blob");
@@ -58,7 +72,10 @@ export async function resumenVentas() {
         datosTexto: fechaCorta(dia),
         actualizadoTexto: fechaHoraBolivia(momento),
         calculadoTexto: diferencia > 3 * 60 * 1000 ? fechaHoraBolivia(excel.subido) : "",
-        conteos: completo.conteos,
+        conteos: {
+          ...completo.conteos,
+          porModelo: contarColumna(completo.columnas, completo.filas, "Model") || completo.conteos?.porModelo,
+        },
       };
     }
   }

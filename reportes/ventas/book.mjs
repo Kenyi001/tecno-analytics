@@ -269,7 +269,7 @@ export function vistaPublica(filas, ciclo, hojas) {
     filas: registros,
     conteos: {
       registros: registros.length,
-      porModelo: contar(filas, "Model").slice(0, 12),
+      porModelo: contar(filas, "Model"),
       porCiudad: contar(filas, "City"),
       porEstado: contar(filas, "State"),
     },

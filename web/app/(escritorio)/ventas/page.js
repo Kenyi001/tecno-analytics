@@ -80,8 +80,9 @@ export default function Ventas() {
 
   const hasta = datos?.ciclo?.hastaTexto || "…";
   const conteos = datos?.vista?.conteos;
-  const modelos = (conteos?.porModelo || []).slice(0, 8);
-  const departamentos = (conteos?.porEstado || []).slice(0, 8);
+  const modelos = conteos?.porModelo || [];
+  const departamentos = conteos?.porEstado || [];
+  const sumaModelos = modelos.reduce((suma, item) => suma + item.ventas, 0);
 
   return (
     <section>
@@ -135,7 +136,12 @@ export default function Ventas() {
           <div className="dos-conteos">
             <article className="panel">
               <h2>Por modelo</h2>
-              {modelos.length ? <Barras items={modelos} /> : <p className="sub">Sin registros.</p>}
+              <p className="sub explicacion">
+                {modelos.length
+                  ? `Están los ${modelos.length} modelos. Sumados dan ${sumaModelos} registros.`
+                  : "Sin registros."}
+              </p>
+              {modelos.length ? <Barras items={modelos} /> : null}
             </article>
             <article className="panel">
               <h2>Por departamento</h2>
