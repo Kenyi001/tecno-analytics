@@ -1,5 +1,6 @@
 import { get, list } from "@vercel/blob";
 import { cicloDe, fechaCorta, fechaHoraBolivia } from "./ciclo";
+import { leerHoja } from "./libro";
 
 function contarColumna(columnas, filas, nombre) {
   if (!Array.isArray(columnas) || !Array.isArray(filas)) return null;
@@ -56,6 +57,55 @@ function cruzarColumnas(columnas, filas) {
   }));
 }
 
+function claveNombre(texto) {
+  return String(texto || "")
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function rosterFijos(hoja) {
+  const filas = hoja?.filas || [];
+  const cabecera = filas.findIndex(
+    (fila) => Array.isArray(fila) && fila.includes("Nombre Completo") && fila.includes("Team Leader"),
+  );
+  if (cabecera < 0) return [];
+  const encabezado = filas[cabecera];
+  const iNom = encabezado.indexOf("Nombre Completo");
+  const iTl = encabezado.indexOf("Team Leader");
+  const iCod = encabezado.indexOf("Codigo DCR");
+  const gente = [];
+  const vistos = new Set();
+  for (const datos of filas.slice(cabecera + 1)) {
+    const nombre = String(datos?.[iNom] || "").replace(/\s+/g, " ").trim();
+    const lider = String(datos?.[iTl] || "").trim();
+    const codigo = String(datos?.[iCod] || "").trim();
+    const clave = claveNombre(nombre);
+    if (!nombre || !lider || !codigo || !clave || vistos.has(clave)) continue;
+    vistos.add(clave);
+    gente.push({ nombre, clave });
+  }
+  return gente;
+}
+
+function topFijos(columnas, filas, roster) {
+  if (!Array.isArray(columnas) || !Array.isArray(filas) || !roster.length) return null;
+  const indice = columnas.indexOf("Uploader");
+  if (indice < 0) return null;
+  const cuentas = new Map(roster.map((persona) => [persona.clave, 0]));
+  for (const fila of filas) {
+    const clave = claveNombre(fila?.[indice]);
+    if (cuentas.has(clave)) cuentas.set(clave, cuentas.get(clave) + 1);
+  }
+  const orden = roster
+    .map((persona) => ({ nombre: persona.nombre, ventas: cuentas.get(persona.clave) || 0 }))
+    .sort((a, b) => b.ventas - a.ventas || a.nombre.localeCompare(b.nombre, "es"));
+  const total = orden.reduce((suma, persona) => suma + persona.ventas, 0);
+  return { lista: orden.filter((persona) => persona.ventas > 0).slice(0, 10), total };
+}
+
 function token() {
   const valor = process.env.BLOB_READ_WRITE_TOKEN;
   if (!valor) throw new Error("Falta el token del Blob");
@@ -107,6 +157,20 @@ export async function resumenVentas() {
       const momento = completo.generado || jsons[0].uploadedAt;
       const excel = archivos.find((archivo) => archivo.dia === dia);
       const diferencia = excel?.subido && momento ? new Date(excel.subido).getTime() - new Date(momento).getTime() : 0;
+      let porFijos = null;
+      let ventasFijos = 0;
+      const libro = await bajar(jsons[0].pathname.replace(/\.json$/, ".xlsx"));
+      if (libro) {
+        try {
+          const fijos = topFijos(completo.columnas, completo.filas, rosterFijos(await leerHoja(libro, "Fijos")));
+          if (fijos) {
+            porFijos = fijos.lista;
+            ventasFijos = fijos.total;
+          }
+        } catch {
+          porFijos = null;
+        }
+      }
       vista = {
         generado: completo.generado,
         dia,
@@ -119,6 +183,8 @@ export async function resumenVentas() {
           porArea: cortarColumna(completo.columnas, completo.filas, "Position", grupoPosicion, ["TECNO", "Mercado"]),
           porClave: cortarColumna(completo.columnas, completo.filas, "Model", grupoModelo, ["Clave", "MIX"]),
           porCruce: cruzarColumnas(completo.columnas, completo.filas),
+          porFijos,
+          ventasFijos,
         },
       };
     }

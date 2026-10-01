@@ -173,6 +173,7 @@ h2 { margin: 0 0 12px; font-size: 14px; font-weight: 650; }
 
 .barras { list-style: none; margin: 0; padding: 0; }
 .barras li { display: grid; grid-template-columns: minmax(90px, 1.1fr) 2fr auto; gap: 8px; align-items: center; min-height: 28px; }
+.barras.anchas li { grid-template-columns: minmax(180px, 1.4fr) 2fr auto; }
 .barra-nombre { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .barra-riel { height: 8px; background: #f4f5f6; border-radius: 99px; overflow: hidden; }
 .barra-riel span { display: block; height: 100%; background: #009bde; border-radius: 99px; }

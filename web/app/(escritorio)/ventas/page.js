@@ -87,15 +87,15 @@ function Cruce({ titulo, nota, grupos, total }) {
   );
 }
 
-function Barras({ items, colorDe }) {
-  const suma = items.reduce((total, item) => total + item.ventas, 0) || 1;
+function Barras({ items, colorDe, base, ancha }) {
+  const suma = base || items.reduce((total, item) => total + item.ventas, 0) || 1;
   return (
-    <ul className="barras">
+    <ul className={ancha ? "barras anchas" : "barras"}>
       {items.map((item) => {
         const parte = Math.round((item.ventas / suma) * 100);
         return (
           <li key={item.nombre}>
-            <span className="barra-nombre">{item.nombre}</span>
+            <span className="barra-nombre" title={item.nombre}>{item.nombre}</span>
             <span className="barra-riel">
               <span style={{ width: `${parte}%`, background: colorDe?.(item.nombre) }} />
             </span>
@@ -182,6 +182,7 @@ export default function Ventas() {
   const modelos = conteos?.porModelo || [];
   const departamentos = conteos?.porEstado || [];
   const cruce = conteos?.porCruce;
+  const fijos = conteos?.porFijos || [];
   const sumaModelos = modelos.reduce((suma, item) => suma + item.ventas, 0);
   const rango =
     datos?.ciclo && datos?.vista ? `${datos.ciclo.inicioTexto} – ${datos.vista.datosTexto}` : "";
@@ -299,9 +300,18 @@ export default function Ventas() {
               <strong>{conteos.porEstado?.length || 0}</strong>
             </article>
           </div>
+          <article className="panel bloque">
+            <h2>Top 10 vendedores fijos · {rango}</h2>
+            <p className="sub explicacion">
+              {fijos.length
+                ? `Los 10 con más ventas de la hoja Fijos. Sumados, los vendedores fijos tienen ${conteos.ventasFijos} ventas. El porcentaje es sobre ese total.`
+                : "Esos vendedores no aparecen en este archivo."}
+            </p>
+            {fijos.length ? <Barras items={fijos} base={conteos.ventasFijos} ancha /> : null}
+          </article>
           <div className="dos-conteos">
             <article className="panel">
-              <h2>Modelos · {rango}</h2>
+              <h2>Ranking de modelos · {rango}</h2>
               <p className="sub explicacion">
                 {modelos.length
                   ? `Están los ${modelos.length} modelos. Sumados dan ${sumaModelos} registros. El porcentaje es sobre ese total. Naranja es clave, LK7 y LK7K. Gris es el MIX.`
