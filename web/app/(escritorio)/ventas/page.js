@@ -105,6 +105,9 @@ export default function Ventas() {
                 Última actualización {datos.vista.actualizadoTexto}. Datos del Excel hasta {datos.vista.datosTexto}.
               </p>
               <p className="sub">
+                Pide el Excel de Shop Sales Query New en DCR y lo guarda en el archivo del día.
+              </p>
+              <p className="sub">
                 {datos.vista.calculadoTexto
                   ? `Reportes calculados ${datos.vista.calculadoTexto}.`
                   : "Los reportes muestran el cálculo guardado en el archivo."}
@@ -120,6 +123,35 @@ export default function Ventas() {
       {!datos && !error ? <p className="aviso">Cargando ventas…</p> : null}
       {datos && !conteos ? (
         <p className="aviso">Todavía no hay un archivo de este ciclo. Puedes pedirlo con el botón.</p>
+      ) : null}
+      {datos ? (
+        <article className="panel lista-archivos">
+          <h2>Archivos del ciclo</h2>
+          {datos.archivos.length ? (
+            <table className="lista">
+              <thead>
+                <tr>
+                  <th>Día</th>
+                  <th>Actualizado</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {datos.archivos.map((archivo) => (
+                  <tr key={archivo.dia}>
+                    <td>{archivo.texto}</td>
+                    <td>{archivo.subidoTexto}</td>
+                    <td className="derecha">
+                      <Link href={`/ventas/libro?dia=${archivo.dia}`}>Abrir</Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="sub">Todavía no hay un archivo de este ciclo.</p>
+          )}
+        </article>
       ) : null}
       {conteos ? (
         <>
@@ -152,35 +184,6 @@ export default function Ventas() {
             </article>
           </div>
         </>
-      ) : null}
-      {datos ? (
-        <article className="panel lista-archivos">
-          <h2>Archivos del ciclo</h2>
-          {datos.archivos.length ? (
-            <table className="lista">
-              <thead>
-                <tr>
-                  <th>Día</th>
-                  <th>Actualizado</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {datos.archivos.map((archivo) => (
-                  <tr key={archivo.dia}>
-                    <td>{archivo.texto}</td>
-                    <td>{archivo.subidoTexto}</td>
-                    <td className="derecha">
-                      <Link href={`/ventas/libro?dia=${archivo.dia}`}>Abrir</Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <p className="sub">Todavía no hay un archivo de este ciclo.</p>
-          )}
-        </article>
       ) : null}
     </section>
   );

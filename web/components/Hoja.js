@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 const VISTA = 640;
 const CABECERA = 22;
@@ -76,6 +76,10 @@ export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos
   const [scroll, setScroll] = useState(0);
   const [ocultasCol, setOcultasCol] = useState(() => conjuntoInicial(columnasOcultas));
   const [ocultasFila, setOcultasFila] = useState(() => conjuntoInicial(filasOcultas));
+  const [marcasCol, setMarcasCol] = useState(() => new Set());
+  const [marcasFila, setMarcasFila] = useState(() => new Set());
+  const anclaCol = useRef(null);
+  const anclaFila = useRef(null);
   const mapa = useMemo(() => {
     const salida = new Map();
     for (const [fila, columna, estilo] of pintadas || []) salida.set(`${fila},${columna}`, estilos?.[estilo]);
@@ -124,22 +128,42 @@ export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos
 
   if (!filas.length) return <p className="aviso">Esta hoja no tiene valores guardados.</p>;
 
-  function alternarCol(indice) {
-    setOcultasCol((previo) => {
+  function alternarVisible(setOcultas, indice) {
+    setOcultas((previo) => {
       const siguiente = new Set(previo);
-      if (siguiente.has(indice)) siguiente.delete(indice);
-      else siguiente.add(indice);
+      siguiente.delete(indice);
       return siguiente;
     });
   }
 
-  function alternarFila(indice) {
-    setOcultasFila((previo) => {
+  function marcar(setMarcas, ancla, indice, shift) {
+    setMarcas((previo) => {
       const siguiente = new Set(previo);
-      if (siguiente.has(indice)) siguiente.delete(indice);
+      if (shift && ancla.current != null) {
+        const desde = Math.min(ancla.current, indice);
+        const hasta = Math.max(ancla.current, indice);
+        for (let i = desde; i <= hasta; i++) siguiente.add(i);
+      } else if (siguiente.has(indice)) siguiente.delete(indice);
       else siguiente.add(indice);
       return siguiente;
     });
+    ancla.current = indice;
+  }
+
+  function marcarTodo() {
+    const columnasVisibles = columnas.map((_, indice) => indice).filter((indice) => !ocultasCol.has(indice));
+    const base = indices || filas.map((_, indice) => indice);
+    const filasVisibles = base.filter((indice) => !ocultasFila.has(indice));
+    setMarcasCol(new Set(columnasVisibles));
+    setMarcasFila(new Set(filasVisibles));
+  }
+
+  function ocultarMarcadas() {
+    if (!marcasCol.size && !marcasFila.size) return;
+    setOcultasCol((previo) => new Set([...previo, ...marcasCol]));
+    setOcultasFila((previo) => new Set([...previo, ...marcasFila]));
+    setMarcasCol(new Set());
+    setMarcasFila(new Set());
   }
 
   const letrasOcultas = [...ocultasCol].sort((a, b) => a - b);
@@ -175,11 +199,29 @@ export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos
   return (
     <>
     <div className="ocultas-barra">
-      <span>Clic en la letra oculta la columna. Clic en el número oculta la fila.</span>
+      <span>Marca las letras y los números. Después pulsa Ocultar.</span>
+      <button type="button" className="chip" onClick={marcarTodo}>
+        Marcar todo
+      </button>
+      <button type="button" className="chip accion" onClick={ocultarMarcadas} disabled={!marcasCol.size && !marcasFila.size}>
+        Ocultar{marcasCol.size || marcasFila.size ? ` ${marcasCol.size + marcasFila.size}` : ""}
+      </button>
+      {marcasCol.size || marcasFila.size ? (
+        <button
+          type="button"
+          className="chip"
+          onClick={() => {
+            setMarcasCol(new Set());
+            setMarcasFila(new Set());
+          }}
+        >
+          Quitar marcas
+        </button>
+      ) : null}
       {letrasOcultas.length ? (
         letrasOcultas.length <= 24 ? (
           letrasOcultas.map((indice) => (
-            <button key={indice} type="button" className="chip" onClick={() => alternarCol(indice)}>
+            <button key={indice} type="button" className="chip" onClick={() => alternarVisible(setOcultasCol, indice)}>
               {columnas[indice]}
             </button>
           ))
@@ -218,13 +260,13 @@ export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos
           </colgroup>
           <thead>
             <tr style={{ height: CABECERA }}>
-              <th className="num" />
+              <th className="num" title="Marcar todas las filas y columnas" onClick={marcarTodo} />
               {columnas.map((columna, indice) => (
                 <th
                   key={columna}
-                  className={ocultasCol.has(indice) ? "oculta" : undefined}
-                  title="Ocultar columna"
-                  onClick={() => alternarCol(indice)}
+                  className={[ocultasCol.has(indice) ? "oculta" : "", marcasCol.has(indice) ? "marcada" : ""].filter(Boolean).join(" ") || undefined}
+                  title="Marcar columna. Mayús marca el tramo."
+                  onClick={(evento) => marcar(setMarcasCol, anclaCol, indice, evento.shiftKey)}
                 >
                   {columna}
                 </th>
@@ -245,7 +287,11 @@ export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos
                 className={ocultasFila.has(filaIndice) ? "oculta" : undefined}
                 style={{ height: indices ? 22 : altos[filaIndice] || 20 }}
               >
-                <td className="num" title="Ocultar fila" onClick={() => alternarFila(filaIndice)}>
+                <td
+                  className={marcasFila.has(filaIndice) ? "num marcada" : "num"}
+                  title="Marcar fila. Mayús marca el tramo."
+                  onClick={(evento) => marcar(setMarcasFila, anclaFila, filaIndice, evento.shiftKey)}
+                >
                   {filaIndice + 1}
                 </td>
                 {celdas(filaIndice)}
