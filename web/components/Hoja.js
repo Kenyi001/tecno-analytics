@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const VISTA = 640;
 const CABECERA = 22;
@@ -126,6 +126,24 @@ export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos
     return { origen, tapa };
   }, [merges, indices, inicioReal, fin]);
 
+  function quitarMarcas() {
+    setMarcasCol(new Set());
+    setMarcasFila(new Set());
+    anclaCol.current = null;
+    anclaFila.current = null;
+  }
+
+  useEffect(() => {
+    function alTeclado(evento) {
+      if (evento.key !== "Escape") return;
+      const etiqueta = evento.target?.tagName;
+      if (etiqueta === "INPUT" || etiqueta === "TEXTAREA" || etiqueta === "SELECT") return;
+      quitarMarcas();
+    }
+    window.addEventListener("keydown", alTeclado);
+    return () => window.removeEventListener("keydown", alTeclado);
+  }, []);
+
   if (!filas.length) return <p className="aviso">Esta hoja no tiene valores guardados.</p>;
 
   function alternarVisible(setOcultas, indice) {
@@ -203,7 +221,7 @@ export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos
   return (
     <>
     <div className="ocultas-barra">
-      <span>Marca las letras y los números. Con Mayús marcas la serie. Después pulsa Ocultar.</span>
+      <span>Marca las letras y los números. Con Mayús marcas la serie. Esc quita la marca. Después pulsa Ocultar.</span>
       <button type="button" className="chip" onClick={marcarTodo}>
         Marcar todo
       </button>
@@ -214,10 +232,7 @@ export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos
         <button
           type="button"
           className="chip"
-          onClick={() => {
-            setMarcasCol(new Set());
-            setMarcasFila(new Set());
-          }}
+          onClick={quitarMarcas}
         >
           Quitar marcas
         </button>
