@@ -102,7 +102,14 @@ function leerCompartidas(xml) {
 }
 
 function textoCelda(atributos, interior, compartidas) {
-  if (/\bt="inlineStr"/.test(atributos) || /\bt="str"/.test(atributos)) {
+  if (/\bt="inlineStr"/.test(atributos)) {
+    const partes = [...interior.matchAll(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g)].map((m) => decodificar(m[1]));
+    return { texto: partes.join(""), numero: false };
+  }
+  // Una fórmula que devuelve texto guarda el resultado en <v>, con t="str".
+  if (/\bt="str"/.test(atributos)) {
+    const valor = /<v>([\s\S]*?)<\/v>/.exec(interior);
+    if (valor) return { texto: decodificar(valor[1]), numero: false };
     const partes = [...interior.matchAll(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g)].map((m) => decodificar(m[1]));
     return { texto: partes.join(""), numero: false };
   }
