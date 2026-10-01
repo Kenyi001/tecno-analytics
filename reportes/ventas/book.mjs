@@ -257,6 +257,26 @@ function contar(filas, nombre) {
     .sort((a, b) => b.ventas - a.ventas || a.nombre.localeCompare(b.nombre));
 }
 
+function grupoPosicion(valor) {
+  const texto = String(valor || "").trim().toLowerCase();
+  return texto === "area sales manager" || texto === "sales manager" ? "TECNO" : "Mercado";
+}
+
+function grupoModelo(valor) {
+  return /^lk7k?$/i.test(String(valor || "").trim()) ? "Clave" : "MIX";
+}
+
+function cortar(filas, nombre, grupoDe, orden) {
+  const indice = filas[0].indexOf(nombre);
+  if (indice < 0) return null;
+  const cuentas = new Map(orden.map((item) => [item, 0]));
+  for (const fila of filas.slice(1)) {
+    const grupo = grupoDe(fila[indice]);
+    cuentas.set(grupo, (cuentas.get(grupo) || 0) + 1);
+  }
+  return orden.map((nombreItem) => ({ nombre: nombreItem, ventas: cuentas.get(nombreItem) || 0 }));
+}
+
 export function vistaPublica(filas, ciclo, hojas) {
   const ocultas = filas[0].map((nombre) => COLUMNAS_OCULTAS.has(nombre));
   const columnas = filas[0].filter((_, i) => !ocultas[i]);
@@ -272,6 +292,8 @@ export function vistaPublica(filas, ciclo, hojas) {
       porModelo: contar(filas, "Model"),
       porCiudad: contar(filas, "City"),
       porEstado: contar(filas, "State"),
+      porArea: cortar(filas, "Position", grupoPosicion, ["TECNO", "Mercado"]),
+      porClave: cortar(filas, "Model", grupoModelo, ["Clave", "MIX"]),
     },
   };
 }

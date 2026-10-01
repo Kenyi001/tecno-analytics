@@ -4,18 +4,23 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 function Barras({ items }) {
-  const tope = Math.max(...items.map((item) => item.ventas), 1);
+  const suma = items.reduce((total, item) => total + item.ventas, 0) || 1;
   return (
     <ul className="barras">
-      {items.map((item) => (
-        <li key={item.nombre}>
-          <span className="barra-nombre">{item.nombre}</span>
-          <span className="barra-riel">
-            <span style={{ width: `${Math.round((item.ventas / tope) * 100)}%` }} />
-          </span>
-          <span className="barra-num">{item.ventas}</span>
-        </li>
-      ))}
+      {items.map((item) => {
+        const parte = Math.round((item.ventas / suma) * 100);
+        return (
+          <li key={item.nombre}>
+            <span className="barra-nombre">{item.nombre}</span>
+            <span className="barra-riel">
+              <span style={{ width: `${parte}%` }} />
+            </span>
+            <span className="barra-num">
+              {item.ventas} · {parte}%
+            </span>
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -91,7 +96,11 @@ export default function Ventas() {
   const conteos = datos?.vista?.conteos;
   const modelos = conteos?.porModelo || [];
   const departamentos = conteos?.porEstado || [];
+  const areas = conteos?.porArea;
+  const claves = conteos?.porClave || [];
   const sumaModelos = modelos.reduce((suma, item) => suma + item.ventas, 0);
+  const rango =
+    datos?.ciclo && datos?.vista ? `${datos.ciclo.inicioTexto} – ${datos.vista.datosTexto}` : "";
 
   return (
     <section>
@@ -144,28 +153,12 @@ export default function Ventas() {
       ) : null}
       {datos ? (
         <article className="panel lista-archivos">
-          <h2>Archivos del ciclo</h2>
-          {datos.archivos.length ? (
-            <table className="lista">
-              <thead>
-                <tr>
-                  <th>Día</th>
-                  <th>Actualizado</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {datos.archivos.map((archivo) => (
-                  <tr key={archivo.dia}>
-                    <td>{archivo.texto}</td>
-                    <td>{archivo.subidoTexto}</td>
-                    <td className="derecha">
-                      <Link href={`/ventas/libro?dia=${archivo.dia}`}>Abrir</Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <h2>{rango ? `Reporte del ${rango}` : "Reporte del ciclo"}</h2>
+          {datos.vista && conteos ? (
+            <div className="reporte-actual">
+              <p className="sub">Total {conteos.registros} registros.</p>
+              <Link href={`/ventas/libro?dia=${datos.vista.dia}`}>Abrir</Link>
+            </div>
           ) : (
             <p className="sub">Todavía no hay un archivo de este ciclo.</p>
           )}
@@ -185,20 +178,34 @@ export default function Ventas() {
           </div>
           <div className="dos-conteos">
             <article className="panel">
-              <h2>Por modelo</h2>
+              <h2>Modelos · {rango}</h2>
               <p className="sub explicacion">
                 {modelos.length
-                  ? `Están los ${modelos.length} modelos. Sumados dan ${sumaModelos} registros.`
+                  ? `Están los ${modelos.length} modelos. Sumados dan ${sumaModelos} registros. El porcentaje es sobre ese total.`
                   : "Sin registros."}
               </p>
               {modelos.length ? <Barras items={modelos} /> : null}
             </article>
             <article className="panel">
-              <h2>Por departamento</h2>
+              <h2>Departamentos · {rango}</h2>
               <p className="sub explicacion">
-                El departamento de la venta en DCR: La Paz, Cochabamba, Santa Cruz y el resto. El Alto entra en La Paz, igual que en el Excel.
+                El departamento de la venta en DCR: La Paz, Cochabamba, Santa Cruz y el resto. El Alto entra en La Paz, igual que en el Excel. El porcentaje es sobre el total del reporte.
               </p>
               {departamentos.length ? <Barras items={departamentos} /> : <p className="sub">Sin registros.</p>}
+            </article>
+          </div>
+          <div className="dos-conteos">
+            <article className="panel">
+              <h2>Vendedores TECNO y mercado · {rango}</h2>
+              <p className="sub explicacion">
+                Position Area Sales Manager es TECNO. El resto de esa columna es el mercado.
+              </p>
+              {areas ? <Barras items={areas} /> : <p className="sub">Esa columna no está en el archivo.</p>}
+            </article>
+            <article className="panel">
+              <h2>Modelos clave y MIX · {rango}</h2>
+              <p className="sub explicacion">LK7 y LK7K son clave. El resto de los modelos es el MIX.</p>
+              {claves.length ? <Barras items={claves} /> : <p className="sub">Sin registros.</p>}
             </article>
           </div>
         </>

@@ -15,6 +15,27 @@ function contarColumna(columnas, filas, nombre) {
     .sort((a, b) => b.ventas - a.ventas || a.nombre.localeCompare(b.nombre, "es"));
 }
 
+function grupoPosicion(valor) {
+  const texto = String(valor || "").trim().toLowerCase();
+  return texto === "area sales manager" || texto === "sales manager" ? "TECNO" : "Mercado";
+}
+
+function grupoModelo(valor) {
+  return /^lk7k?$/i.test(String(valor || "").trim()) ? "Clave" : "MIX";
+}
+
+function cortarColumna(columnas, filas, nombre, grupoDe, orden) {
+  if (!Array.isArray(columnas) || !Array.isArray(filas)) return null;
+  const indice = columnas.indexOf(nombre);
+  if (indice < 0) return null;
+  const cuentas = new Map(orden.map((item) => [item, 0]));
+  for (const fila of filas) {
+    const grupo = grupoDe(fila?.[indice]);
+    cuentas.set(grupo, (cuentas.get(grupo) || 0) + 1);
+  }
+  return orden.map((nombreItem) => ({ nombre: nombreItem, ventas: cuentas.get(nombreItem) || 0 }));
+}
+
 function token() {
   const valor = process.env.BLOB_READ_WRITE_TOKEN;
   if (!valor) throw new Error("Falta el token del Blob");
@@ -75,6 +96,8 @@ export async function resumenVentas() {
         conteos: {
           ...completo.conteos,
           porModelo: contarColumna(completo.columnas, completo.filas, "Model") || completo.conteos?.porModelo,
+          porArea: cortarColumna(completo.columnas, completo.filas, "Position", grupoPosicion, ["TECNO", "Mercado"]),
+          porClave: cortarColumna(completo.columnas, completo.filas, "Model", grupoModelo, ["Clave", "MIX"]),
         },
       };
     }
