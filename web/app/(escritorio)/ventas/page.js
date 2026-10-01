@@ -3,6 +3,52 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+function partesDe(items) {
+  const suma = items.reduce((total, item) => total + item.ventas, 0);
+  if (!suma) return items.map((item) => ({ ...item, parte: 0 }));
+  const partes = items.map((item) => ({ ...item, parte: Math.round((item.ventas / suma) * 100) }));
+  const ajuste = 100 - partes.reduce((total, item) => total + item.parte, 0);
+  partes[partes.length - 1].parte += ajuste;
+  return partes;
+}
+
+function tinta(hex) {
+  const n = Number.parseInt(hex.slice(1), 16);
+  const luma = (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
+  return luma > 0.62 ? "#003366" : "#ffffff";
+}
+
+function Corte({ titulo, nota, items, colores }) {
+  const partes = partesDe(items);
+  const total = items.reduce((suma, item) => suma + item.ventas, 0);
+  return (
+    <article className="panel corte">
+      <h2>{titulo}</h2>
+      <p className="sub explicacion">{nota}</p>
+      <div className="corte-riel">
+        {partes.map((item, indice) => (
+          <span
+            key={item.nombre}
+            className="corte-trozo"
+            style={{ width: `${item.parte}%`, background: colores[indice], color: tinta(colores[indice]) }}
+          >
+            {item.parte >= 14 ? `${item.parte}%` : ""}
+          </span>
+        ))}
+      </div>
+      <div className="corte-leyenda">
+        {partes.map((item, indice) => (
+          <span key={item.nombre}>
+            <i style={{ background: colores[indice] }} />
+            <strong>{item.nombre}</strong> {item.ventas} · {item.parte}%
+          </span>
+        ))}
+        <strong className="corte-total">Total {total}</strong>
+      </div>
+    </article>
+  );
+}
+
 function Barras({ items }) {
   const suma = items.reduce((total, item) => total + item.ventas, 0) || 1;
   return (
@@ -166,6 +212,29 @@ export default function Ventas() {
       ) : null}
       {conteos ? (
         <>
+          <div className="dos-conteos cortes">
+            {areas ? (
+              <Corte
+                titulo={`Vendedores TECNO y mercado · ${rango}`}
+                nota="En la misma barra. Azul oscuro es TECNO, Area Sales Manager. Azul claro es el mercado."
+                items={areas}
+                colores={["#003366", "#8ecae6"]}
+              />
+            ) : (
+              <article className="panel">
+                <h2>Vendedores TECNO y mercado · {rango}</h2>
+                <p className="sub">Esa columna no está en el archivo.</p>
+              </article>
+            )}
+            {claves.length ? (
+              <Corte
+                titulo={`Modelos clave y MIX · ${rango}`}
+                nota="La clave, LK7 y LK7K, va resaltada. El MIX son los demás modelos."
+                items={claves}
+                colores={["#c2410c", "#94a3b8"]}
+              />
+            ) : null}
+          </div>
           <div className="numeros">
             <article>
               <span>Registros</span>
@@ -192,20 +261,6 @@ export default function Ventas() {
                 El departamento de la venta en DCR: La Paz, Cochabamba, Santa Cruz y el resto. El Alto entra en La Paz, igual que en el Excel. El porcentaje es sobre el total del reporte.
               </p>
               {departamentos.length ? <Barras items={departamentos} /> : <p className="sub">Sin registros.</p>}
-            </article>
-          </div>
-          <div className="dos-conteos">
-            <article className="panel">
-              <h2>Vendedores TECNO y mercado · {rango}</h2>
-              <p className="sub explicacion">
-                Position Area Sales Manager es TECNO. El resto de esa columna es el mercado.
-              </p>
-              {areas ? <Barras items={areas} /> : <p className="sub">Esa columna no está en el archivo.</p>}
-            </article>
-            <article className="panel">
-              <h2>Modelos clave y MIX · {rango}</h2>
-              <p className="sub explicacion">LK7 y LK7K son clave. El resto de los modelos es el MIX.</p>
-              {claves.length ? <Barras items={claves} /> : <p className="sub">Sin registros.</p>}
             </article>
           </div>
         </>
