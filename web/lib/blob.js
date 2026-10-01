@@ -85,7 +85,7 @@ function rosterFijos(hoja) {
     const clave = claveNombre(nombre);
     if (!nombre || !lider || !codigo || !clave || vistos.has(clave)) continue;
     vistos.add(clave);
-    gente.push({ nombre, clave });
+    gente.push({ nombre, clave, codigo });
   }
   return gente;
 }
@@ -104,6 +104,36 @@ function topFijos(columnas, filas, roster) {
     .sort((a, b) => b.ventas - a.ventas || a.nombre.localeCompare(b.nombre, "es"));
   const total = orden.reduce((suma, persona) => suma + persona.ventas, 0);
   return { lista: orden.filter((persona) => persona.ventas > 0).slice(0, 10), total };
+}
+
+function diasEntre(inicio, fin) {
+  const desde = new Date(`${inicio}T12:00:00Z`).getTime();
+  const hasta = new Date(`${fin}T12:00:00Z`).getTime();
+  if (!Number.isFinite(desde) || !Number.isFinite(hasta) || hasta < desde) return 0;
+  return Math.round((hasta - desde) / 86400000) + 1;
+}
+
+function pronosticoVentas(columnas, filas, ciclo) {
+  const iMod = columnas.indexOf("Model");
+  if (iMod < 0 || !ciclo?.inicio || !ciclo?.hasta || !ciclo?.finEtiqueta) return null;
+  const corridos = diasEntre(ciclo.inicio, ciclo.hasta);
+  const cicloDias = diasEntre(ciclo.inicio, ciclo.finEtiqueta);
+  if (corridos < 1 || cicloDias < 1) return null;
+  let clave = 0;
+  let mix = 0;
+  for (const fila of filas) {
+    if (grupoModelo(fila?.[iMod]) === "Clave") clave += 1;
+    else mix += 1;
+  }
+  const proyectar = (ventas) => Math.round((ventas / corridos) * cicloDias);
+  return {
+    clave,
+    mix,
+    corridos,
+    cicloDias,
+    claveProyectada: proyectar(clave),
+    mixProyectada: proyectar(mix),
+  };
 }
 
 function token() {
@@ -185,6 +215,11 @@ export async function resumenVentas() {
           porCruce: cruzarColumnas(completo.columnas, completo.filas),
           porFijos,
           ventasFijos,
+          pronostico: pronosticoVentas(completo.columnas, completo.filas, {
+            inicio: ciclo.inicio,
+            hasta: dia,
+            finEtiqueta: ciclo.finEtiqueta,
+          }),
         },
       };
     }
@@ -203,5 +238,87 @@ export async function resumenVentas() {
     archivos,
     vista,
     hoy: hoy ? { subido: hoy.uploadedAt } : null,
+  };
+}
+
+function indiceColumna(columnas, nombres) {
+  for (const nombre of nombres) {
+    const indice = columnas.indexOf(nombre);
+    if (indice >= 0) return indice;
+  }
+  return -1;
+}
+
+function unicos(valores) {
+  return [...new Set(valores.map((valor) => String(valor || "").trim()).filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b, "es"),
+  );
+}
+
+export async function consultarCodigo(codigo) {
+  const buscado = String(codigo || "").replace(/\s+/g, "").trim().toUpperCase();
+  if (!/^[A-Z0-9]{4,24}$/.test(buscado)) return { encontrado: false };
+  const ciclo = cicloDe();
+  const blobs = await listar(`${ciclo.carpeta}/`);
+  const jsons = blobs.filter((blob) => blob.pathname.endsWith(".json")).sort((a, b) => b.pathname.localeCompare(a.pathname));
+  if (!jsons[0]) return { encontrado: false };
+  const bytes = await bajar(jsons[0].pathname);
+  if (!bytes) return { encontrado: false };
+  const completo = JSON.parse(bytes.toString("utf8"));
+  const columnas = completo.columnas || [];
+  const filas = completo.filas || [];
+  let roster = [];
+  const libro = await bajar(jsons[0].pathname.replace(/\.json$/, ".xlsx"));
+  if (libro) {
+    try {
+      roster = rosterFijos(await leerHoja(libro, "Fijos"));
+    } catch {
+      roster = [];
+    }
+  }
+  const persona = roster.find((item) => String(item.codigo || "").replace(/\s+/g, "").toUpperCase() === buscado);
+  const iUp = indiceColumna(columnas, ["Uploader"]);
+  const iId = indiceColumna(columnas, ["Uploader ID"]);
+  const clave = persona?.clave || "";
+  const propias = filas.filter((fila) => {
+    const id = iId >= 0 ? String(fila?.[iId] || "").replace(/\s+/g, "").trim().toUpperCase() : "";
+    if (id && id === buscado) return true;
+    return Boolean(clave && iUp >= 0 && claveNombre(fila?.[iUp]) === clave);
+  });
+  if (!persona && !propias.length) return { encontrado: false };
+  const iMod = indiceColumna(columnas, ["Model"]);
+  const iAct = indiceColumna(columnas, ["Activation Date"]);
+  const iShop = indiceColumna(columnas, ["Shop ID"]);
+  const iNombreTienda = indiceColumna(columnas, ["Shop Name", "Shop"]);
+  const iCiudad = indiceColumna(columnas, ["City"]);
+  const mapa = new Map();
+  let ventasClave = 0;
+  let ventasMix = 0;
+  for (const fila of propias) {
+    const modelo = iMod >= 0 ? String(fila?.[iMod] || "").trim() || "(sin modelo)" : "(sin modelo)";
+    const estado = iAct >= 0 && String(fila?.[iAct] || "").trim() ? "Activado" : "No activado";
+    const llave = `${modelo}\t${estado}`;
+    mapa.set(llave, (mapa.get(llave) || 0) + 1);
+    if (grupoModelo(modelo) === "Clave") ventasClave += 1;
+    else ventasMix += 1;
+  }
+  const dia = jsons[0].pathname.split("/").pop().replace(/\.json$/, "");
+  return {
+    encontrado: true,
+    nombre: persona?.nombre || (iUp >= 0 ? String(propias[0]?.[iUp] || "").replace(/\s+/g, " ").trim() : ""),
+    codigo: persona?.codigo || buscado,
+    rango: `${fechaCorta(ciclo.inicio)} – ${fechaCorta(dia)}`,
+    ciudades: unicos(propias.map((fila) => (iCiudad >= 0 ? fila?.[iCiudad] : ""))),
+    tiendas: unicos(propias.map((fila) => (iShop >= 0 ? fila?.[iShop] : ""))),
+    nombresTienda: unicos(propias.map((fila) => (iNombreTienda >= 0 ? fila?.[iNombreTienda] : ""))),
+    modelos: [...mapa.entries()]
+      .map(([llave, ventas]) => {
+        const [modelo, estado] = llave.split("\t");
+        return { modelo, estado, ventas };
+      })
+      .sort((a, b) => b.ventas - a.ventas || a.modelo.localeCompare(b.modelo, "es") || a.estado.localeCompare(b.estado, "es")),
+    clave: ventasClave,
+    mix: ventasMix,
+    total: propias.length,
   };
 }

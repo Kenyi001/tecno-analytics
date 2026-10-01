@@ -116,6 +116,11 @@ export default function Ventas() {
   const [actualizando, setActualizando] = useState(false);
   const [progreso, setProgreso] = useState({ avance: 8, frase: "En fila para empezar." });
   const [versiones, setVersiones] = useState(false);
+  const [consultaAbierta, setConsultaAbierta] = useState(false);
+  const [codigoBusqueda, setCodigoBusqueda] = useState("");
+  const [consulta, setConsulta] = useState(null);
+  const [buscandoCodigo, setBuscandoCodigo] = useState(false);
+  const [errorCodigo, setErrorCodigo] = useState("");
   const timer = useRef(null);
 
   async function cargar() {
@@ -130,6 +135,37 @@ export default function Ventas() {
       if (timer.current) clearInterval(timer.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (!consultaAbierta) return undefined;
+    function alTeclado(evento) {
+      if (evento.key === "Escape") setConsultaAbierta(false);
+    }
+    window.addEventListener("keydown", alTeclado);
+    return () => window.removeEventListener("keydown", alTeclado);
+  }, [consultaAbierta]);
+
+  async function buscarCodigo(evento) {
+    evento.preventDefault();
+    const codigo = codigoBusqueda.trim();
+    if (!codigo || buscandoCodigo) return;
+    setBuscandoCodigo(true);
+    setErrorCodigo("");
+    setConsulta(null);
+    try {
+      const respuesta = await fetch(`/api/ventas/consulta?codigo=${encodeURIComponent(codigo)}`, { cache: "no-store" });
+      const cuerpo = await respuesta.json().catch(() => ({}));
+      if (!respuesta.ok) {
+        setErrorCodigo(cuerpo.error || "No se pudo consultar ese código.");
+        return;
+      }
+      setConsulta(cuerpo);
+    } catch {
+      setErrorCodigo("No se pudo consultar ese código.");
+    } finally {
+      setBuscandoCodigo(false);
+    }
+  }
 
   async function actualizar() {
     if (!datos || actualizando) return;
@@ -183,6 +219,7 @@ export default function Ventas() {
   const departamentos = conteos?.porEstado || [];
   const cruce = conteos?.porCruce;
   const fijos = conteos?.porFijos || [];
+  const pronostico = conteos?.pronostico;
   const sumaModelos = modelos.reduce((suma, item) => suma + item.ventas, 0);
   const rango =
     datos?.ciclo && datos?.vista ? `${datos.ciclo.inicioTexto} – ${datos.vista.datosTexto}` : "";
@@ -242,6 +279,9 @@ export default function Ventas() {
                   </p>
                 </div>
                 <div className="reporte-acciones">
+                  <button type="button" className="btn secundario" onClick={() => setConsultaAbierta(true)}>
+                    Consultar código
+                  </button>
                   <button type="button" className="btn secundario" onClick={() => setVersiones((abierto) => !abierto)}>
                     {versiones ? "Ocultar versiones anteriores" : "Ver versiones anteriores"}
                   </button>
@@ -329,7 +369,97 @@ export default function Ventas() {
               {departamentos.length ? <Barras items={departamentos} /> : <p className="sub">Sin registros.</p>}
             </article>
           </div>
+          {pronostico ? (
+            <article className="panel bloque">
+              <h2>Pronóstico de ventas al {datos.ciclo.finTexto}</h2>
+              <p className="sub explicacion">
+                Ritmo de los {pronostico.corridos} días ya corridos, llevado a los {pronostico.cicloDias} días del ciclo. Si el ritmo cambia, la proyección cambia.
+              </p>
+              <div className="corte-leyenda">
+                <span>
+                  <i style={{ background: COLOR_CLAVE }} />
+                  Clave {pronostico.clave} ahora · {pronostico.claveProyectada} al cierre
+                </span>
+                <span>
+                  <i style={{ background: COLOR_MIX }} />
+                  MIX {pronostico.mix} ahora · {pronostico.mixProyectada} al cierre
+                </span>
+              </div>
+            </article>
+          ) : null}
         </>
+      ) : null}
+      {consultaAbierta ? (
+        <div className="velo" onClick={() => setConsultaAbierta(false)}>
+          <div className="consulta" role="dialog" aria-modal="true" aria-labelledby="consulta-titulo" onClick={(evento) => evento.stopPropagation()}>
+            <div className="consulta-cabeza">
+              <h2 id="consulta-titulo">Consultar código</h2>
+              <button type="button" className="btn secundario" onClick={() => setConsultaAbierta(false)}>
+                Cerrar
+              </button>
+            </div>
+            <p className="sub explicacion">Busca un código de Fijos o un Uploader ID en el reporte actual.</p>
+            <form className="consulta-forma" onSubmit={buscarCodigo}>
+              <input
+                value={codigoBusqueda}
+                onChange={(evento) => setCodigoBusqueda(evento.target.value)}
+                placeholder="BOS14102922"
+                autoFocus
+              />
+              <button type="submit" className="btn" disabled={buscandoCodigo || !codigoBusqueda.trim()}>
+                {buscandoCodigo ? "Buscando…" : "Buscar"}
+              </button>
+            </form>
+            {errorCodigo ? <p className="aviso fallo">{errorCodigo}</p> : null}
+            {consulta && !consulta.encontrado ? <p className="sub">Ese código no está en el reporte.</p> : null}
+            {consulta?.encontrado ? (
+              <div className="consulta-resultado">
+                <p>
+                  <strong>{consulta.nombre || "Sin nombre"}</strong>
+                  <span className="sub"> {consulta.codigo} · {consulta.rango}</span>
+                </p>
+                <p className="sub">
+                  {consulta.ciudades.length ? consulta.ciudades.join(", ") : "Sin ciudad"}
+                  {consulta.tiendas.length ? ` · ${consulta.tiendas.join(", ")}` : ""}
+                </p>
+                {consulta.nombresTienda.length ? <p className="sub">{consulta.nombresTienda.join(", ")}</p> : null}
+                <div className="corte-leyenda">
+                  <span>
+                    <i style={{ background: COLOR_CLAVE }} />
+                    Clave {consulta.clave}
+                  </span>
+                  <span>
+                    <i style={{ background: COLOR_MIX }} />
+                    MIX {consulta.mix}
+                  </span>
+                  <strong className="corte-total">Total {consulta.total}</strong>
+                </div>
+                {consulta.modelos.length ? (
+                  <table className="lista">
+                    <thead>
+                      <tr>
+                        <th>Modelo</th>
+                        <th>Estado</th>
+                        <th className="derecha">Ventas</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {consulta.modelos.map((fila) => (
+                        <tr key={`${fila.modelo}-${fila.estado}`}>
+                          <td>{fila.modelo}</td>
+                          <td>{fila.estado}</td>
+                          <td className="derecha">{fila.ventas}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="sub">Ese código está en Fijos y no tiene ventas en este reporte.</p>
+                )}
+              </div>
+            ) : null}
+          </div>
+        </div>
       ) : null}
     </section>
   );

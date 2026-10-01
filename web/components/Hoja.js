@@ -74,6 +74,8 @@ function conjuntoInicial(flags) {
 
 export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos, merges, graficos, imagenes, indices, columnasOcultas, filasOcultas }) {
   const [scroll, setScroll] = useState(0);
+  const archivoCol = useMemo(() => conjuntoInicial(columnasOcultas), [columnasOcultas]);
+  const archivoFila = useMemo(() => conjuntoInicial(filasOcultas), [filasOcultas]);
   const [ocultasCol, setOcultasCol] = useState(() => conjuntoInicial(columnasOcultas));
   const [ocultasFila, setOcultasFila] = useState(() => conjuntoInicial(filasOcultas));
   const [marcasCol, setMarcasCol] = useState(() => new Set());
@@ -190,6 +192,22 @@ export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos
 
   const letrasOcultas = [...ocultasCol].sort((a, b) => a - b);
   const numerosOcultos = [...ocultasFila].sort((a, b) => a - b);
+  const letrasArchivo = letrasOcultas.filter((indice) => archivoCol.has(indice));
+  const letrasSesion = letrasOcultas.filter((indice) => !archivoCol.has(indice));
+  const filasArchivo = numerosOcultos.filter((indice) => archivoFila.has(indice));
+  const filasSesion = numerosOcultos.filter((indice) => !archivoFila.has(indice));
+
+  function claseFicha(indice, archivo) {
+    return archivo.has(indice) ? "chip archivo" : "chip sesion";
+  }
+
+  function mostrarGrupo(setOcultas, indices) {
+    setOcultas((previo) => {
+      const siguiente = new Set(previo);
+      for (const indice of indices) siguiente.delete(indice);
+      return siguiente;
+    });
+  }
   const anchoTotal = NUMERO + (anchos || []).reduce((suma, ancho, indice) => suma + (ocultasCol.has(indice) ? 0 : ancho), 0);
   const filaEn = (posicion) => (indices ? indices[posicion] : posicion);
   const antes = indices ? inicioReal * 22 : prefijo[inicioReal] || 0;
@@ -221,7 +239,7 @@ export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos
   return (
     <>
     <div className="ocultas-barra">
-      <span>Marca las letras y los números. Con Mayús marcas la serie. Esc quita la marca. Después pulsa Ocultar.</span>
+      <span>Marca las letras y los números. Con Mayús marcas la serie. Esc quita la marca. Después pulsa Ocultar. Gris: venía oculta en el Excel. Azul: la ocultaste en esta sesión.</span>
       <button type="button" className="chip" onClick={marcarTodo}>
         Marcar todo
       </button>
@@ -240,19 +258,33 @@ export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos
       {letrasOcultas.length ? (
         letrasOcultas.length <= 24 ? (
           letrasOcultas.map((indice) => (
-            <button key={indice} type="button" className="chip" onClick={() => alternarVisible(setOcultasCol, indice)}>
+            <button key={indice} type="button" className={claseFicha(indice, archivoCol)} onClick={() => alternarVisible(setOcultasCol, indice)}>
               {columnas[indice]}
             </button>
           ))
         ) : (
-          <button type="button" className="chip" onClick={() => setOcultasCol(new Set())}>
-            {letrasOcultas.length} columnas
-          </button>
+          <>
+            {letrasArchivo.length ? (
+              <button type="button" className="chip archivo" onClick={() => mostrarGrupo(setOcultasCol, letrasArchivo)}>
+                {letrasArchivo.length} {letrasArchivo.length === 1 ? "columna del Excel" : "columnas del Excel"}
+              </button>
+            ) : null}
+            {letrasSesion.length ? (
+              <button type="button" className="chip sesion" onClick={() => mostrarGrupo(setOcultasCol, letrasSesion)}>
+                {letrasSesion.length} {letrasSesion.length === 1 ? "columna de esta sesión" : "columnas de esta sesión"}
+              </button>
+            ) : null}
+          </>
         )
       ) : null}
-      {numerosOcultos.length ? (
-        <button type="button" className="chip" onClick={() => setOcultasFila(new Set())}>
-          {numerosOcultos.length} {numerosOcultos.length === 1 ? "fila" : "filas"}
+      {filasArchivo.length ? (
+        <button type="button" className="chip archivo" onClick={() => mostrarGrupo(setOcultasFila, filasArchivo)}>
+          {filasArchivo.length} {filasArchivo.length === 1 ? "fila del Excel" : "filas del Excel"}
+        </button>
+      ) : null}
+      {filasSesion.length ? (
+        <button type="button" className="chip sesion" onClick={() => mostrarGrupo(setOcultasFila, filasSesion)}>
+          {filasSesion.length} {filasSesion.length === 1 ? "fila de esta sesión" : "filas de esta sesión"}
         </button>
       ) : null}
       {letrasOcultas.length || numerosOcultos.length ? (
