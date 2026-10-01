@@ -133,11 +133,24 @@ function rgbDe(fragmento) {
 
 function temaColores(themeXml) {
   const esquema = themeXml ? /<a:clrScheme[\s\S]*?<\/a:clrScheme>/.exec(themeXml)?.[0] || "" : "";
-  const nombres = ["dk1", "lt1", "dk2", "lt2", "accent1", "accent2", "accent3", "accent4", "accent5", "accent6", "hlink", "folHlink"];
-  return nombres.map((nombre) => {
+  const porNombre = {};
+  for (const nombre of ["dk1", "lt1", "dk2", "lt2", "accent1", "accent2", "accent3", "accent4", "accent5", "accent6", "hlink", "folHlink"]) {
     const bloque = new RegExp(`<a:${nombre}>[\\s\\S]*?</a:${nombre}>`).exec(esquema)?.[0] || "";
-    return rgbDe(bloque) || "000000";
-  });
+    porNombre[nombre] = rgbDe(bloque) || "000000";
+  }
+  // El índice theme="N" de Excel no sigue el orden del XML: 0 es lt1 y 1 es dk1.
+  return ["lt1", "dk1", "lt2", "dk2", "accent1", "accent2", "accent3", "accent4", "accent5", "accent6", "hlink", "folHlink"].map(
+    (nombre) => porNombre[nombre] || "000000"
+  );
+}
+
+function contraste(color, fondo) {
+  if (!color || !fondo || !color.startsWith("#") || !fondo.startsWith("#")) return color;
+  const claroFondo = luminancia(fondo.slice(1));
+  const claroLetra = luminancia(color.slice(1));
+  if (claroFondo < 0.45 && claroLetra < 0.4) return "#ffffff";
+  if (claroFondo > 0.82 && claroLetra > 0.85) return "#1e293b";
+  return color;
 }
 
 function luminancia(hex) {
@@ -223,11 +236,14 @@ function leerEstilos(stylesXml, themeXml) {
     const relleno = rellenos[Number((/\bfillId="(\d+)"/.exec(xf) || [])[1] || 0)] || "";
     const formato = formatos[(/\bnumFmtId="(\d+)"/.exec(xf) || [])[1] || "0"] || "general";
     const alineado = (/\bhorizontal="([^"]+)"/.exec(xf) || [])[1] || "";
-    const color = fuente.color || "";
     const fondo = relleno || "";
+    const color = contraste(
+      fuente.color || (fondo && luminancia(fondo.slice(1)) < 0.45 ? "#ffffff" : ""),
+      fondo
+    );
     return {
       bg: fondo,
-      color: color || (fondo && luminancia(fondo.slice(1)) < 0.45 ? "#ffffff" : ""),
+      color,
       bold: Boolean(fuente.bold),
       italic: Boolean(fuente.italic),
       size: fuente.size || 11,
@@ -279,14 +295,19 @@ function anchoPx(width) {
 
 function leerAnchos(xml, cantidad) {
   const anchos = Array(cantidad).fill(DEF_ANCHO);
+  const ocultas = Array(cantidad).fill(false);
   const cols = xml.match(/<cols\b[\s\S]*?<\/cols>/)?.[0] || "";
   for (const col of cols.match(/<col\b[^>]*\/?>/g) || []) {
     const min = Number((/\bmin="(\d+)"/.exec(col) || [])[1] || 1);
     const max = Number((/\bmax="(\d+)"/.exec(col) || [])[1] || min);
-    const ancho = /\bhidden="1"/.test(col) ? 8 : anchoPx((/\bwidth="([\d.]+)"/.exec(col) || [])[1] || 8.43);
-    for (let i = min; i <= Math.min(max, cantidad); i++) anchos[i - 1] = ancho;
+    const oculta = /\bhidden="1"/.test(col);
+    const ancho = anchoPx((/\bwidth="([\d.]+)"/.exec(col) || [])[1] || 8.43);
+    for (let i = min; i <= Math.min(max, cantidad); i++) {
+      anchos[i - 1] = ancho;
+      if (oculta) ocultas[i - 1] = true;
+    }
   }
-  return anchos;
+  return { anchos, ocultas };
 }
 
 function puntoAncla(bloque) {
@@ -378,6 +399,7 @@ export async function leerHoja(buffer, pedida) {
   const celdas = new Map();
   const conteoCol = new Map();
   const altosHoja = new Map();
+  const filasOcultasNum = new Set();
   let cortado = false;
   const bloque = /<sheetData\b[^>]*>([\s\S]*?)<\/sheetData>/.exec(xml);
   const fuente = bloque ? bloque[1] : "";
@@ -390,6 +412,7 @@ export async function leerHoja(buffer, pedida) {
       if (!cortado && (/<v>/.test(fila[2]) || /<is\b/.test(fila[2]))) cortado = true;
       continue;
     }
+    if (/\bhidden="1"/.test(fila[1])) filasOcultasNum.add(numero);
     const ht = /\bht="([\d.]+)"/.exec(fila[1]);
     if (ht && /\bcustomHeight="1"/.test(fila[1])) altosHoja.set(numero, Math.round(Number(ht[1]) * 96 / 72));
     const mapa = new Map();
@@ -433,6 +456,8 @@ export async function leerHoja(buffer, pedida) {
       pintadas: [],
       anchos: [],
       altos: [],
+      columnasOcultas: [],
+      filasOcultas: [],
       merges: [],
       graficos: [],
       imagenes: [],
@@ -441,10 +466,16 @@ export async function leerHoja(buffer, pedida) {
     };
   }
 
-  const anchosTodas = leerAnchos(xml, maxCol);
+  const medidas = leerAnchos(xml, maxCol);
+  const anchosTodas = medidas.anchos;
   const anchos = anchosTodas.slice(minCol - 1, maxCol);
+  const columnasOcultas = medidas.ocultas.slice(minCol - 1, maxCol);
   const altos = [];
-  for (let i = 1; i <= maxFila; i++) altos.push(altosHoja.get(i) || DEF_ALTO);
+  const filasOcultas = [];
+  for (let i = 1; i <= maxFila; i++) {
+    altos.push(altosHoja.get(i) || DEF_ALTO);
+    filasOcultas.push(filasOcultasNum.has(i));
+  }
   const columnas = [];
   for (let col = minCol; col <= maxCol; col++) columnas.push(letrasColumna(col));
   const filas = [];
@@ -475,7 +506,10 @@ export async function leerHoja(buffer, pedida) {
     estilos.push({
       ...origen,
       bg: fondo,
-      color: dxf.color || origen.color || (fondo && luminancia(fondo.slice(1)) < 0.45 ? "#ffffff" : origen.color),
+      color: contraste(
+        dxf.color || origen.color || (fondo && luminancia(fondo.slice(1)) < 0.45 ? "#ffffff" : origen.color),
+        fondo
+      ),
     });
     const indice = estilos.length - 1;
     estiloExtra.set(clave, indice);
@@ -611,6 +645,8 @@ export async function leerHoja(buffer, pedida) {
     pintadas: pintadasLista.length > 20000 ? pintadasLista.filter(([r]) => r < 2) : pintadasLista,
     anchos,
     altos,
+    columnasOcultas,
+    filasOcultas,
     merges: merges.filter((merge) => merge.filas > 0 && merge.columnas > 0 && (merge.filas > 1 || merge.columnas > 1)),
     graficos,
     imagenes,

@@ -81,7 +81,7 @@ export default function Ventas() {
   const hasta = datos?.ciclo?.hastaTexto || "…";
   const conteos = datos?.vista?.conteos;
   const modelos = (conteos?.porModelo || []).slice(0, 8);
-  const ciudades = (conteos?.porCiudad || []).slice(0, 8);
+  const departamentos = (conteos?.porEstado || []).slice(0, 8);
 
   return (
     <section>
@@ -128,11 +128,7 @@ export default function Ventas() {
               <strong>{conteos.registros}</strong>
             </article>
             <article>
-              <span>Ciudades</span>
-              <strong>{conteos.porCiudad?.length || 0}</strong>
-            </article>
-            <article>
-              <span>Estados</span>
+              <span>Departamentos</span>
               <strong>{conteos.porEstado?.length || 0}</strong>
             </article>
           </div>
@@ -142,8 +138,11 @@ export default function Ventas() {
               {modelos.length ? <Barras items={modelos} /> : <p className="sub">Sin registros.</p>}
             </article>
             <article className="panel">
-              <h2>Por ciudad</h2>
-              {ciudades.length ? <Barras items={ciudades} /> : <p className="sub">Sin registros.</p>}
+              <h2>Por departamento</h2>
+              <p className="sub explicacion">
+                El departamento de la venta en DCR: La Paz, Cochabamba, Santa Cruz y el resto. El Alto entra en La Paz, igual que en el Excel.
+              </p>
+              {departamentos.length ? <Barras items={departamentos} /> : <p className="sub">Sin registros.</p>}
             </article>
           </div>
         </>

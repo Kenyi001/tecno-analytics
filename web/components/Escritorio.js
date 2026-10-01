@@ -13,7 +13,7 @@ export default function Escritorio({ children }) {
     <div className="desk">
       <header className="barra">
         <Link href="/" className="marca">
-          Tecno Analytics
+          tecno-analytics
         </Link>
         <span className="migas">{titulo}</span>
       </header>

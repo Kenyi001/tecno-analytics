@@ -37,6 +37,7 @@ h2 { margin: 0 0 12px; font-size: 14px; font-weight: 650; }
 .btn:disabled { opacity: 0.65; cursor: default; }
 .btn.secundario { background: white; color: #111111; border-color: #e5e7eb; }
 .btn.secundario:hover { background: #f4f5f6; }
+.btn.volver { height: 26px; padding: 0 10px; font-size: 12px; }
 
 .desk { height: 100vh; display: flex; flex-direction: column; background: #f4f5f6; }
 
@@ -116,7 +117,7 @@ h2 { margin: 0 0 12px; font-size: 14px; font-weight: 650; }
 .punto { width: 8px; height: 8px; border-radius: 99px; background: #009bde; }
 .estado { margin-top: 8px; color: #6b7280; font-size: 13px; }
 
-.numeros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
+.numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 12px; }
 .numeros article, .panel {
   background: white;
   border: 1px solid #e5e7eb;
@@ -184,6 +185,28 @@ h2 { margin: 0 0 12px; font-size: 14px; font-weight: 650; }
 }
 .rejilla thead .num { z-index: 2; }
 
+.ocultas-barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  color: #6b7280;
+  font-size: 12px;
+}
+.chip {
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #f4f5f6;
+  color: #111111;
+  font-size: 12px;
+  cursor: pointer;
+}
+.chip:hover { background: white; }
+.explicacion { margin: -4px 0 12px; }
 .lienzo { flex: 1; min-height: 0; overflow: auto; background: white; }
 .hoja-real { position: relative; }
 .hoja-real table { border-collapse: separate; border-spacing: 0; font-size: 12px; table-layout: fixed; }
@@ -214,6 +237,19 @@ h2 { margin: 0 0 12px; font-size: 14px; font-weight: 650; }
   text-align: right;
 }
 .hoja-real thead .num { z-index: 2; }
+.hoja-real thead th { cursor: pointer; }
+.hoja-real .num { cursor: pointer; }
+.hoja-real col.oculta,
+.hoja-real th.oculta,
+.hoja-real td.oculta {
+  width: 0 !important;
+  max-width: 0;
+  padding: 0;
+  border-width: 0;
+  overflow: hidden;
+  font-size: 0;
+}
+.hoja-real tr.oculta { display: none; }
 .grafico {
   position: absolute;
   z-index: 3;

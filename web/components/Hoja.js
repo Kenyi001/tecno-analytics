@@ -68,8 +68,14 @@ function Grafico({ grafico }) {
   );
 }
 
-export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos, merges, graficos, imagenes, indices }) {
+function conjuntoInicial(flags) {
+  return new Set((flags || []).flatMap((oculta, indice) => (oculta ? [indice] : [])));
+}
+
+export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos, merges, graficos, imagenes, indices, columnasOcultas, filasOcultas }) {
   const [scroll, setScroll] = useState(0);
+  const [ocultasCol, setOcultasCol] = useState(() => conjuntoInicial(columnasOcultas));
+  const [ocultasFila, setOcultasFila] = useState(() => conjuntoInicial(filasOcultas));
   const mapa = useMemo(() => {
     const salida = new Map();
     for (const [fila, columna, estilo] of pintadas || []) salida.set(`${fila},${columna}`, estilos?.[estilo]);
@@ -118,7 +124,27 @@ export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos
 
   if (!filas.length) return <p className="aviso">Esta hoja no tiene valores guardados.</p>;
 
-  const anchoTotal = NUMERO + (anchos || []).reduce((suma, ancho) => suma + ancho, 0);
+  function alternarCol(indice) {
+    setOcultasCol((previo) => {
+      const siguiente = new Set(previo);
+      if (siguiente.has(indice)) siguiente.delete(indice);
+      else siguiente.add(indice);
+      return siguiente;
+    });
+  }
+
+  function alternarFila(indice) {
+    setOcultasFila((previo) => {
+      const siguiente = new Set(previo);
+      if (siguiente.has(indice)) siguiente.delete(indice);
+      else siguiente.add(indice);
+      return siguiente;
+    });
+  }
+
+  const letrasOcultas = [...ocultasCol].sort((a, b) => a - b);
+  const numerosOcultos = [...ocultasFila].sort((a, b) => a - b);
+  const anchoTotal = NUMERO + (anchos || []).reduce((suma, ancho, indice) => suma + (ocultasCol.has(indice) ? 0 : ancho), 0);
   const filaEn = (posicion) => (indices ? indices[posicion] : posicion);
   const antes = indices ? inicioReal * 22 : prefijo[inicioReal] || 0;
   const despues = indices ? (total - fin) * 22 : (prefijo[filas.length] || 0) - (prefijo[fin] || 0);
@@ -130,9 +156,16 @@ export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos
       const clave = `${filaIndice},${columna}`;
       if (!indices && cubiertas.tapa.has(clave)) continue;
       const merge = cubiertas.origen.get(clave);
+      const oculta = ocultasCol.has(columna);
       salida.push(
-        <td key={columna} colSpan={merge?.columnas} rowSpan={merge?.filas} style={estiloDe(mapa.get(clave))}>
-          {fila[columna]}
+        <td
+          key={columna}
+          className={oculta ? "oculta" : undefined}
+          colSpan={merge?.columnas}
+          rowSpan={merge?.filas}
+          style={estiloDe(mapa.get(clave))}
+        >
+          {oculta ? "" : fila[columna]}
         </td>
       );
     }
@@ -140,20 +173,61 @@ export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos
   }
 
   return (
+    <>
+    <div className="ocultas-barra">
+      <span>Clic en la letra oculta la columna. Clic en el número oculta la fila.</span>
+      {letrasOcultas.length ? (
+        letrasOcultas.length <= 24 ? (
+          letrasOcultas.map((indice) => (
+            <button key={indice} type="button" className="chip" onClick={() => alternarCol(indice)}>
+              {columnas[indice]}
+            </button>
+          ))
+        ) : (
+          <button type="button" className="chip" onClick={() => setOcultasCol(new Set())}>
+            {letrasOcultas.length} columnas
+          </button>
+        )
+      ) : null}
+      {numerosOcultos.length ? (
+        <button type="button" className="chip" onClick={() => setOcultasFila(new Set())}>
+          {numerosOcultos.length} {numerosOcultos.length === 1 ? "fila" : "filas"}
+        </button>
+      ) : null}
+      {letrasOcultas.length || numerosOcultos.length ? (
+        <button
+          type="button"
+          className="chip"
+          onClick={() => {
+            setOcultasCol(new Set());
+            setOcultasFila(new Set());
+          }}
+        >
+          Mostrar todo
+        </button>
+      ) : null}
+    </div>
     <div className="lienzo" onScroll={(evento) => setScroll(evento.currentTarget.scrollTop)}>
       <div className="hoja-real" style={{ width: anchoTotal }}>
         <table>
           <colgroup>
             <col style={{ width: NUMERO }} />
             {(anchos || []).map((ancho, indice) => (
-              <col key={indice} style={{ width: ancho }} />
+              <col key={indice} className={ocultasCol.has(indice) ? "oculta" : undefined} style={{ width: ocultasCol.has(indice) ? 0 : ancho }} />
             ))}
           </colgroup>
           <thead>
             <tr style={{ height: CABECERA }}>
               <th className="num" />
-              {columnas.map((columna) => (
-                <th key={columna}>{columna}</th>
+              {columnas.map((columna, indice) => (
+                <th
+                  key={columna}
+                  className={ocultasCol.has(indice) ? "oculta" : undefined}
+                  title="Ocultar columna"
+                  onClick={() => alternarCol(indice)}
+                >
+                  {columna}
+                </th>
               ))}
             </tr>
           </thead>
@@ -166,8 +240,14 @@ export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos
             {Array.from({ length: Math.max(0, fin - inicioReal) }, (_, desplazamiento) => inicioReal + desplazamiento).map((posicion) => {
               const filaIndice = filaEn(posicion);
               return (
-              <tr key={filaIndice} style={{ height: indices ? 22 : altos[filaIndice] || 20 }}>
-                <td className="num">{filaIndice + 1}</td>
+              <tr
+                key={filaIndice}
+                className={ocultasFila.has(filaIndice) ? "oculta" : undefined}
+                style={{ height: indices ? 22 : altos[filaIndice] || 20 }}
+              >
+                <td className="num" title="Ocultar fila" onClick={() => alternarFila(filaIndice)}>
+                  {filaIndice + 1}
+                </td>
                 {celdas(filaIndice)}
               </tr>
               );
@@ -196,5 +276,6 @@ export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos
             ))}
       </div>
     </div>
+    </>
   );
 }

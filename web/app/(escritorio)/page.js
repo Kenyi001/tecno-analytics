@@ -18,7 +18,7 @@ export default async function Inicio() {
       <div className="encabezado">
         <div>
           <h1>Reportes</h1>
-          <p className="sub">El escritorio de Tecno. Cada reporte se abre desde aquí.</p>
+          <p className="sub">El escritorio de tecno-analytics. Cada reporte se abre desde aquí.</p>
         </div>
       </div>
       <div className="rejilla-tarjetas">

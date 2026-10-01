@@ -86,7 +86,9 @@ function Libro() {
   return (
     <div className="libro">
       <div className="libro-barra">
-        <Link href="/ventas">Ventas</Link>
+        <Link href="/ventas" className="btn secundario volver">
+          Volver
+        </Link>
         <strong>{dia || "Libro"}</strong>
         <span className="crece" />
         <button type="button" className="btn secundario" onClick={copiar} disabled={!grid}>
@@ -158,6 +160,8 @@ function Libro() {
           graficos={grid.graficos}
           imagenes={grid.imagenes}
           indices={indices}
+          columnasOcultas={grid.columnasOcultas}
+          filasOcultas={grid.filasOcultas}
         />
       ) : (
         <div className="crece" />
