@@ -285,8 +285,12 @@ export async function armarLibro(plantilla, filas) {
   const detallePath = rutaHoja(workbook, rels, "Detalle_imei2");
   const dataXml = await zip.file(dataPath).async("string");
   const detalleXml = await zip.file(detallePath).async("string");
-  zip.file(dataPath, armarDataDcr(dataXml, filas));
-  zip.file(detallePath, rearmarDetalle(detalleXml, filas));
+  const sinCarpeta = { createFolders: false };
+  zip.file(dataPath, armarDataDcr(dataXml, filas), sinCarpeta);
+  zip.file(detallePath, rearmarDetalle(detalleXml, filas), sinCarpeta);
+  for (const nombre of Object.keys(zip.files)) {
+    if (zip.files[nombre].dir) delete zip.files[nombre];
+  }
   const buffer = await zip.generateAsync({
     type: "nodebuffer",
     compression: "DEFLATE",

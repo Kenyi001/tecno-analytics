@@ -22,8 +22,9 @@ export const AVISOS_EXPORT_URL =
 
 export const LOGIN_URL = "https://dcr.imwav.com/login#/";
 
-// Cuerpo que arma getExportParams: el formulario de la pantalla, con las
-// listas partidas y las fechas del ciclo en carga y en venta.
+// Cuerpo de getExportParams. La pantalla filtra por fecha de carga
+// (startDate/endDate) y deja la fecha de venta vacía. Status queda en
+// Committed, que es enabledFlag 1.
 export function cuerpoVentas(ciclo) {
   return {
     areaId: "",
@@ -41,8 +42,8 @@ export function cuerpoVentas(ciclo) {
     submitterDutyIds: [],
     startDate: ciclo.inicio,
     endDate: ciclo.hasta,
-    startSalesDate: ciclo.inicio,
-    endSalesDate: ciclo.hasta,
+    startSalesDate: "",
+    endSalesDate: "",
     startActivationDate: "",
     endActivationDate: "",
     countries: [],
