@@ -88,6 +88,25 @@ h2 { margin: 0 0 12px; font-size: 14px; font-weight: 650; }
 
 .encabezado { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
 .actualizar { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; max-width: 320px; }
+.progreso { width: 100%; min-width: 240px; }
+.progreso-pista {
+  height: 8px;
+  border-radius: 99px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+.progreso-barra {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #009bde, #7ad3f5, #009bde);
+  background-size: 200% 100%;
+  transition: width 0.6s ease;
+  animation: avance 1.2s linear infinite;
+}
+@keyframes avance {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
 .actualizar .sub { margin: 0; text-align: right; }
 
 .aviso {
@@ -242,8 +261,8 @@ h2 { margin: 0 0 12px; font-size: 14px; font-weight: 650; }
 .hoja-real thead .num { z-index: 2; }
 .hoja-real th.marcada,
 .hoja-real td.num.marcada { background: #009bde; color: white; }
-.hoja-real thead th { cursor: pointer; }
-.hoja-real .num { cursor: pointer; }
+.hoja-real thead th { cursor: pointer; user-select: none; }
+.hoja-real .num { cursor: pointer; user-select: none; }
 .hoja-real col.oculta,
 .hoja-real th.oculta,
 .hoja-real td.oculta {

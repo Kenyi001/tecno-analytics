@@ -25,6 +25,7 @@ export default function Ventas() {
   const [error, setError] = useState("");
   const [aviso, setAviso] = useState("");
   const [actualizando, setActualizando] = useState(false);
+  const [progreso, setProgreso] = useState({ avance: 8, frase: "En fila para empezar." });
   const timer = useRef(null);
 
   async function cargar() {
@@ -43,6 +44,7 @@ export default function Ventas() {
   async function actualizar() {
     if (!datos || actualizando) return;
     setAviso("");
+    setProgreso({ avance: 8, frase: "En fila para empezar." });
     setActualizando(true);
     const respuesta = await fetch("/api/ventas", { method: "POST" });
     const cuerpo = await respuesta.json().catch(() => ({}));
@@ -63,10 +65,17 @@ export default function Ventas() {
       try {
         const estado = await fetch(`/api/ventas/estado?desde=${desde}`, { cache: "no-store" });
         const cuerpoEstado = await estado.json();
+        if (cuerpoEstado.frase || cuerpoEstado.avance) {
+          setProgreso({
+            avance: cuerpoEstado.estado === "listo" ? 100 : cuerpoEstado.avance || 12,
+            frase: cuerpoEstado.frase || "Trabajando en la actualización.",
+          });
+        }
         if (cuerpoEstado.estado === "listo") {
           clearInterval(timer.current);
+          setProgreso({ avance: 100, frase: "Listo." });
           await cargar();
-          setActualizando(false);
+          setTimeout(() => setActualizando(false), 900);
         } else if (cuerpoEstado.estado === "fallo") {
           clearInterval(timer.current);
           setActualizando(false);
@@ -96,9 +105,18 @@ export default function Ventas() {
           </p>
         </div>
         <div className="actualizar">
-          <button type="button" className="btn" onClick={actualizar} disabled={!datos || actualizando}>
-            {actualizando ? `Actualizando ventas hasta ${hasta}` : `Actualizar hasta ${hasta}`}
-          </button>
+          {actualizando ? (
+            <div className="progreso" role="status" aria-live="polite">
+              <div className="progreso-pista">
+                <div className="progreso-barra" style={{ width: `${Math.max(8, Math.min(100, progreso.avance))}%` }} />
+              </div>
+              <p className="sub">{progreso.frase}</p>
+            </div>
+          ) : (
+            <button type="button" className="btn" onClick={actualizar} disabled={!datos}>
+              {`Actualizar hasta ${hasta}`}
+            </button>
+          )}
           {datos?.vista?.actualizadoTexto ? (
             <>
               <p className="sub">

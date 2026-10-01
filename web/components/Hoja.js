@@ -137,13 +137,17 @@ export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos
   }
 
   function marcar(setMarcas, ancla, indice, shift) {
+    if (shift && ancla.current != null) {
+      const desde = Math.min(ancla.current, indice);
+      const hasta = Math.max(ancla.current, indice);
+      const serie = new Set();
+      for (let i = desde; i <= hasta; i++) serie.add(i);
+      setMarcas(serie);
+      return;
+    }
     setMarcas((previo) => {
       const siguiente = new Set(previo);
-      if (shift && ancla.current != null) {
-        const desde = Math.min(ancla.current, indice);
-        const hasta = Math.max(ancla.current, indice);
-        for (let i = desde; i <= hasta; i++) siguiente.add(i);
-      } else if (siguiente.has(indice)) siguiente.delete(indice);
+      if (siguiente.has(indice)) siguiente.delete(indice);
       else siguiente.add(indice);
       return siguiente;
     });
@@ -199,7 +203,7 @@ export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos
   return (
     <>
     <div className="ocultas-barra">
-      <span>Marca las letras y los números. Después pulsa Ocultar.</span>
+      <span>Marca las letras y los números. Con Mayús marcas la serie. Después pulsa Ocultar.</span>
       <button type="button" className="chip" onClick={marcarTodo}>
         Marcar todo
       </button>
@@ -265,8 +269,11 @@ export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos
                 <th
                   key={columna}
                   className={[ocultasCol.has(indice) ? "oculta" : "", marcasCol.has(indice) ? "marcada" : ""].filter(Boolean).join(" ") || undefined}
-                  title="Marcar columna. Mayús marca el tramo."
-                  onClick={(evento) => marcar(setMarcasCol, anclaCol, indice, evento.shiftKey)}
+                  title="Marcar columna. Mayús marca la serie."
+                  onMouseDown={(evento) => {
+                    evento.preventDefault();
+                    marcar(setMarcasCol, anclaCol, indice, evento.shiftKey);
+                  }}
                 >
                   {columna}
                 </th>
@@ -289,8 +296,11 @@ export default function Hoja({ columnas, filas, estilos, pintadas, anchos, altos
               >
                 <td
                   className={marcasFila.has(filaIndice) ? "num marcada" : "num"}
-                  title="Marcar fila. Mayús marca el tramo."
-                  onClick={(evento) => marcar(setMarcasFila, anclaFila, filaIndice, evento.shiftKey)}
+                  title="Marcar fila. Mayús marca la serie."
+                  onMouseDown={(evento) => {
+                    evento.preventDefault();
+                    marcar(setMarcasFila, anclaFila, filaIndice, evento.shiftKey);
+                  }}
                 >
                   {filaIndice + 1}
                 </td>

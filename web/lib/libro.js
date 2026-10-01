@@ -416,7 +416,7 @@ export async function leerHoja(buffer, pedida) {
     const ht = /\bht="([\d.]+)"/.exec(fila[1]);
     if (ht && /\bcustomHeight="1"/.test(fila[1])) altosHoja.set(numero, Math.round(Number(ht[1]) * 96 / 72));
     const mapa = new Map();
-    const celdaRe = /<c\b([^>]*?)\br="([A-Z]+)(\d+)"([^>]*)(?:\/>|>([\s\S]*?)<\/c>)/g;
+    const celdaRe = /<c\b([^>]*?)\br="([A-Z]+)(\d+)"([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g;
     let celda;
     while ((celda = celdaRe.exec(fila[2]))) {
       const columna = numeroColumna(celda[2]);
