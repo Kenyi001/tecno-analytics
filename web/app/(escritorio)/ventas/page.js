@@ -115,6 +115,7 @@ export default function Ventas() {
   const [aviso, setAviso] = useState("");
   const [actualizando, setActualizando] = useState(false);
   const [progreso, setProgreso] = useState({ avance: 8, frase: "En fila para empezar." });
+  const [versiones, setVersiones] = useState(false);
   const timer = useRef(null);
 
   async function cargar() {
@@ -184,13 +185,14 @@ export default function Ventas() {
   const sumaModelos = modelos.reduce((suma, item) => suma + item.ventas, 0);
   const rango =
     datos?.ciclo && datos?.vista ? `${datos.ciclo.inicioTexto} – ${datos.vista.datosTexto}` : "";
+  const anteriores = (datos?.archivos || []).filter((archivo) => archivo.dia !== datos?.vista?.dia);
 
   return (
     <section>
       <div className="encabezado">
         <div>
           <h1>Ventas</h1>
-          <p className="sub">
+          <p className="ciclo">
             {datos
               ? `Ciclo ${datos.ciclo.inicioTexto} – ${datos.ciclo.finTexto}.`
               : "Ventas del ciclo, del 21 al 20."}
@@ -214,14 +216,6 @@ export default function Ventas() {
               <p className="sub">
                 Última actualización {datos.vista.actualizadoTexto}. Datos del Excel hasta {datos.vista.datosTexto}.
               </p>
-              <p className="sub">
-                Pide el Excel de Shop Sales Query New en DCR y lo guarda en el archivo del día.
-              </p>
-              <p className="sub">
-                {datos.vista.calculadoTexto
-                  ? `Reportes calculados ${datos.vista.calculadoTexto}.`
-                  : "Los reportes muestran el cálculo guardado en el archivo."}
-              </p>
             </>
           ) : datos ? (
             <p className="sub">Todavía no hay una actualización de este ciclo.</p>
@@ -238,17 +232,43 @@ export default function Ventas() {
         <article className="panel lista-archivos">
           <h2>{rango ? `Reporte del ${rango}` : "Reporte del ciclo"}</h2>
           {datos.vista && conteos ? (
-            <div className="reporte-actual">
-              <div>
-                <p className="sub">Total {conteos.registros} registros.</p>
-                <p className="sub">
-                  Abre el libro de este reporte, del {datos.ciclo.inicioTexto} al {datos.vista.datosTexto}, en el navegador.
-                </p>
+            <>
+              <div className="reporte-actual">
+                <div>
+                  <p className="sub">Total {conteos.registros} registros.</p>
+                  <p className="sub">
+                    Abre el libro de este reporte, del {datos.ciclo.inicioTexto} al {datos.vista.datosTexto}, en el navegador.
+                  </p>
+                </div>
+                <div className="reporte-acciones">
+                  <button type="button" className="btn secundario" onClick={() => setVersiones((abierto) => !abierto)}>
+                    {versiones ? "Ocultar versiones anteriores" : "Ver versiones anteriores"}
+                  </button>
+                  <Link className="btn" href={`/ventas/libro?dia=${datos.vista.dia}`}>
+                    Abrir el Excel
+                  </Link>
+                </div>
               </div>
-              <Link className="btn" href={`/ventas/libro?dia=${datos.vista.dia}`}>
-                Abrir el Excel
-              </Link>
-            </div>
+              {versiones ? (
+                <div className="versiones">
+                  <p className="sub">
+                    Estos Excel son de días anteriores del mismo ciclo. El reporte de arriba sigue siendo el actual.
+                  </p>
+                  {anteriores.length ? (
+                    <ul>
+                      {anteriores.map((archivo) => (
+                        <li key={archivo.dia}>
+                          <span>{archivo.texto}</span>
+                          <Link href={`/ventas/libro?dia=${archivo.dia}`}>Abrir</Link>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="sub">Por ahora solo está este Excel.</p>
+                  )}
+                </div>
+              ) : null}
+            </>
           ) : (
             <p className="sub">Todavía no hay un archivo de este ciclo.</p>
           )}
