@@ -9,14 +9,18 @@ const COLOR_MIX = "#8ecae6";
 const COLOR_TECNO = "#009bde";
 
 const CORTES = [
-  { id: "lk7", nombre: "LK7", detalle: "Todos los colores, Lamborghini incluido.", color: COLOR_CLAVE },
-  { id: "lambo", nombre: "LK7 Lamborghini Black", detalle: "Solo el color LAMBORGHINI BLACK.", color: COLOR_MIX },
-  { id: "lk7k", nombre: "LK7K", detalle: "El otro modelo clave.", color: COLOR_TECNO },
+  { id: "lk7", nombre: "LK7", detalle: "Cualquier LK7, Lambo incluido.", color: COLOR_CLAVE },
+  { id: "lambo", nombre: "LK7 Lamborghini Black", detalle: "Solo el color Lambo.", color: COLOR_MIX },
+  { id: "lk7k", nombre: "LK7K", detalle: "Solo LK7K.", color: COLOR_TECNO },
 ];
 
 function tarjeta(grupo) {
   if (!grupo) return null;
   return grupo;
+}
+
+function numero(valor) {
+  return new Intl.NumberFormat("es-BO").format(valor ?? 0);
 }
 
 async function esExcel(archivo) {
@@ -136,44 +140,45 @@ export default function Cobertura() {
       {datos ? (
         <>
           <p className="sub explicacion">
-            Una tienda cubierta es la que ya tiene al menos una unidad. El ritmo son las tiendas que pasaron de cero a cubiertas en los últimos 7 días. Al cierre se suma ese ritmo por los {datos.diasFaltan} días que faltan, sin pasar del total. El IMEI se queda en el Excel y no se publica aquí.
+            Cuenta tiendas con al menos 1 unidad. “Si sigue así” proyecta con el ritmo de la última semana hasta el {datos.cierreTexto}.
           </p>
-          <div className="dos-conteos">
+          <div className="tres-conteos">
             {CORTES.map((corte) => {
               const todas = tarjeta(datos.grupos?.[corte.id]?.todas);
               const top = tarjeta(datos.grupos?.[corte.id]?.top300);
               if (!todas) return null;
+              const avance = Math.min(100, Math.max(0, todas.pct || 0));
               return (
-                <article key={corte.id} className="panel">
+                <article key={corte.id} className="panel cobertura-tarjeta">
                   <h2>{corte.nombre}</h2>
                   <p className="sub explicacion">{corte.detalle}</p>
+                  <div className="cobertura-pista" aria-hidden="true">
+                    <span style={{ width: `${avance}%`, background: corte.color }} />
+                  </div>
                   <div className="numeros">
                     <article>
-                      <span>Cubiertas</span>
+                      <span>Hoy</span>
                       <strong style={{ color: corte.color }}>
-                        {todas.cubiertas} · {todas.pct}%
+                        {todas.pct}%
                       </strong>
+                      <p className="sub">
+                        {numero(todas.cubiertas)} de {numero(todas.total)} tiendas
+                      </p>
                     </article>
                     <article>
-                      <span>Al cierre</span>
-                      <strong>{todas.cierre}</strong>
+                      <span>Si sigue así</span>
+                      <strong>{numero(todas.cierre)}</strong>
+                      <p className="sub">
+                        +{numero(todas.nuevas7)} tiendas en 7 días
+                      </p>
                     </article>
                   </div>
-                  <div className="corte-leyenda">
-                    <span>
-                      <i style={{ background: corte.color }} />
-                      Todas {todas.cubiertas} de {todas.total} · ritmo {todas.ritmo}/día · nuevas 7 días {todas.nuevas7}
-                    </span>
-                  </div>
                   {top ? (
-                    <div className="corte-leyenda">
-                      <span>
-                        <i style={{ background: COLOR_TECNO }} />
-                        Top 300: {top.cubiertas} de {top.total} ({top.pct}%) · al cierre {top.cierre}
-                      </span>
-                    </div>
+                    <p className="sub cobertura-linea">
+                      Top 300: {top.pct}% hoy · {numero(top.cierre)} si sigue así
+                    </p>
                   ) : null}
-                  <p className="sub">Cantidad en tienda: {todas.cantidad}.</p>
+                  <p className="sub cobertura-linea">Stock en tiendas: {numero(todas.cantidad)} unidades</p>
                 </article>
               );
             })}

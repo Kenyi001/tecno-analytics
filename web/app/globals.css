@@ -148,6 +148,18 @@ label.btn.ocupado { opacity: 0.65; pointer-events: none; }
 .numeros strong { display: block; margin-top: 6px; font-size: 28px; font-weight: 650; letter-spacing: -0.03em; }
 
 .dos-conteos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.tres-conteos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px; }
+.cobertura-tarjeta .numeros { margin-bottom: 8px; }
+.cobertura-tarjeta .numeros .sub { margin: 4px 0 0; }
+.cobertura-pista {
+  height: 10px;
+  margin: 0 0 12px;
+  border-radius: 99px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+.cobertura-pista span { display: block; height: 100%; border-radius: 99px; min-width: 0; }
+.cobertura-linea { margin: 4px 0 0; }
 .lista-archivos { margin: 0 0 12px; }
 .reporte-actual { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .reporte-actual .sub { margin: 0; }
@@ -615,7 +627,7 @@ label.btn.ocupado { opacity: 0.65; pointer-events: none; }
 
 @media (max-width: 800px) {
   .menu { display: none; }
-  .numeros, .dos-conteos { grid-template-columns: 1fr; }
+  .numeros, .dos-conteos, .tres-conteos { grid-template-columns: 1fr; }
   .encabezado { flex-direction: column; }
   .actualizar { align-items: flex-start; max-width: none; }
   .actualizar .sub { text-align: left; }
