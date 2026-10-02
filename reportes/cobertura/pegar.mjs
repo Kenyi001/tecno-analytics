@@ -104,14 +104,30 @@ function tieneUnzip() {
 }
 
 function leerEntradaZip(rutaZip, entrada) {
-  const salida = spawnSync("unzip", ["-p", rutaZip, entrada], {
-    encoding: "buffer",
-    maxBuffer: 700 * 1024 * 1024,
-  });
-  if (salida.status !== 0) {
-    throw new Error(`No se pudo leer ${entrada} del Excel de stock`);
+  // Extraer a disco: unzip -p revienta el maxBuffer con hojas Zip64 (~1GB+).
+  const carpeta = fs.mkdtempSync(path.join(os.tmpdir(), "stock-entry-"));
+  try {
+    const salida = spawnSync("unzip", ["-o", "-j", "-d", carpeta, rutaZip, entrada], {
+      encoding: "utf8",
+      maxBuffer: 32 * 1024 * 1024,
+    });
+    if (salida.status !== 0) {
+      const listado = spawnSync("unzip", ["-l", rutaZip], {
+        encoding: "utf8",
+        maxBuffer: 16 * 1024 * 1024,
+      });
+      const detalle = (salida.stderr || salida.stdout || "").trim() || `status ${salida.status}`;
+      const nombres = (listado.stdout || "").split("\n").filter((l) => /xl\//.test(l)).slice(0, 30).join("\n");
+      throw new Error(`No se pudo leer ${entrada} del Excel de stock: ${detalle}\n${nombres}`);
+    }
+    const archivo = path.join(carpeta, path.basename(entrada));
+    if (!fs.existsSync(archivo)) {
+      throw new Error(`unzip no dejó ${entrada} en ${carpeta}`);
+    }
+    return fs.readFileSync(archivo, "utf8");
+  } finally {
+    fs.rmSync(carpeta, { recursive: true, force: true });
   }
-  return salida.stdout.toString("utf8");
 }
 
 async function filasDesdeExport(exportOrigen) {
