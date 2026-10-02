@@ -25,6 +25,7 @@ jobs:
       - name: Bajar stock, pegar Datos y subir
         run: node reportes/cobertura/actualizar.mjs
         env:
+          NODE_OPTIONS: --max-old-space-size=7168
           DCR_USER: ${{ secrets.DCR_USER }}
           DCR_PASSWORD: ${{ secrets.DCR_PASSWORD }}
           BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}

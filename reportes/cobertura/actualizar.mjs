@@ -45,7 +45,9 @@ console.log(`libro ${actual.length} bytes`);
 const tokens = await entrarDcr(usuario, clave);
 console.log("sesión lista");
 
-const stock = await bajarExcelStock(tokens, usuario, []);
+// Solo LK7 y LK7K: alcanza para las tarjetas y evita el Excel completo (~200 MB).
+const stock = await bajarExcelStock(tokens, usuario, ["LK7", "LK7K"]);
+fs.writeFileSync(path.join(carpeta, "stock.xlsx"), stock);
 console.log(`stock ${stock.length} bytes`);
 
 const pegado = await pegarDatos(libro, stock);
@@ -56,6 +58,7 @@ const numeros = spawnSync(process.execPath, ["reportes/cobertura/numeros.mjs"], 
     ...process.env,
     COBERTURA_LIBRO: libro,
     COBERTURA_RESUMEN: resumen,
+    NODE_OPTIONS: "--max-old-space-size=7168",
   },
   encoding: "utf8",
 });

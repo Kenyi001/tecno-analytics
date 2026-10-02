@@ -96,12 +96,22 @@ function celda(letra, fila, valorCelda) {
 }
 
 export async function pegarDatos(rutaLibro, exportBuffer) {
-  const cobertura = await JSZip.loadAsync(fs.readFileSync(rutaLibro));
   const exportado = await JSZip.loadAsync(exportBuffer);
-  for (const zip of [cobertura, exportado]) {
-    for (const nombre of Object.keys(zip.files)) {
-      if (zip.files[nombre].dir) delete zip.files[nombre];
-    }
+  for (const nombre of Object.keys(exportado.files)) {
+    if (exportado.files[nombre].dir) delete exportado.files[nombre];
+  }
+  const libroExport = await exportado.file("xl/workbook.xml").async("string");
+  const relsExport = await exportado.file("xl/_rels/workbook.xml.rels").async("string");
+  const hojaExport = primeraHoja(libroExport, relsExport);
+  const cadenasExport = exportado.file("xl/sharedStrings.xml")
+    ? textos(await exportado.file("xl/sharedStrings.xml").async("string"))
+    : [];
+  const filas = filasDe(await exportado.file(hojaExport).async("string"), cadenasExport);
+  for (const nombre of Object.keys(exportado.files)) delete exportado.files[nombre];
+
+  const cobertura = await JSZip.loadAsync(fs.readFileSync(rutaLibro));
+  for (const nombre of Object.keys(cobertura.files)) {
+    if (cobertura.files[nombre].dir) delete cobertura.files[nombre];
   }
   const libro = await cobertura.file("xl/workbook.xml").async("string");
   const rels = await cobertura.file("xl/_rels/workbook.xml.rels").async("string");
@@ -110,13 +120,6 @@ export async function pegarDatos(rutaLibro, exportBuffer) {
   const cadenasDatos = textos(await cobertura.file("xl/sharedStrings.xml").async("string"));
   const datosXml = await cobertura.file(datosPath).async("string");
   const encabezadoDatos = filasDe(datosXml.slice(0, datosXml.indexOf("</row>") + 6), cadenasDatos)[0] || [];
-  const libroExport = await exportado.file("xl/workbook.xml").async("string");
-  const relsExport = await exportado.file("xl/_rels/workbook.xml.rels").async("string");
-  const hojaExport = primeraHoja(libroExport, relsExport);
-  const cadenasExport = exportado.file("xl/sharedStrings.xml")
-    ? textos(await exportado.file("xl/sharedStrings.xml").async("string"))
-    : [];
-  const filas = filasDe(await exportado.file(hojaExport).async("string"), cadenasExport);
   const encabezadoExport = (filas[0] || []).map((nombre) => String(nombre || "").trim().toLowerCase());
   const puestos = encabezadoDatos.map((nombre) => encabezadoExport.indexOf(String(nombre || "").trim().toLowerCase()));
   const shop = puestos[3];
@@ -142,10 +145,12 @@ export async function pegarDatos(rutaLibro, exportBuffer) {
     lineas.push(`<row r="${numero}">${celdas.join("")}</row>`);
   };
   escribir(1, encabezadoDatos);
-  registros.forEach((fila, indice) => {
+  for (let indice = 0; indice < registros.length; indice++) {
+    const fila = registros[indice];
     const valores = puestos.map((puesto) => (puesto >= 0 ? fila[puesto] : ""));
     escribir(indice + 2, valores);
-  });
+    registros[indice] = null;
+  }
   lineas.push("</sheetData></worksheet>");
   const fin = registros.length + 1;
   let shopXml = await cobertura.file(shopPath).async("string");
@@ -164,5 +169,5 @@ export async function pegarDatos(rutaLibro, exportBuffer) {
     fs.unlinkSync(temporal);
     throw error;
   }
-  return { filas: registros.length, fin };
+  return { filas: fin - 1, fin };
 }
