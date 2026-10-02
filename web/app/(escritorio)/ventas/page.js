@@ -87,6 +87,35 @@ function Cruce({ titulo, nota, grupos, total }) {
   );
 }
 
+function formatoBs(valor) {
+  if (valor == null) return "—";
+  return new Intl.NumberFormat("es-BO", {
+    style: "currency",
+    currency: "BOB",
+    minimumFractionDigits: 2,
+  })
+    .format(valor)
+    .replace("BOB", "Bs");
+}
+
+function PronosticoFila({ etiqueta, ahora, proyectado, color, maximo }) {
+  const tope = maximo || proyectado || 1;
+  const anchoAhora = Math.min(100, Math.round((ahora / tope) * 100));
+  return (
+    <li className="pronostico-fila">
+      <span className="pronostico-etiqueta">
+        <i style={{ background: color }} />
+        {etiqueta}
+      </span>
+      <span className="pronostico-ahora">{ahora}</span>
+      <span className="pronostico-riel" aria-hidden="true">
+        <span className="pronostico-lleno" style={{ width: `${anchoAhora}%`, background: color }} />
+      </span>
+      <span className="pronostico-cierre">{proyectado}</span>
+    </li>
+  );
+}
+
 function Barras({ items, colorDe, base, ancha }) {
   const suma = base || items.reduce((total, item) => total + item.ventas, 0) || 1;
   return (
@@ -340,15 +369,44 @@ export default function Ventas() {
               <strong>{conteos.porEstado?.length || 0}</strong>
             </article>
           </div>
-          <article className="panel bloque">
-            <h2>Top 10 vendedores fijos · {rango}</h2>
-            <p className="sub explicacion">
-              {fijos.length
-                ? `Los 10 con más ventas de la hoja Fijos. Sumados, los vendedores fijos tienen ${conteos.ventasFijos} ventas. El porcentaje es sobre ese total.`
-                : "Esos vendedores no aparecen en este archivo."}
-            </p>
-            {fijos.length ? <Barras items={fijos} base={conteos.ventasFijos} ancha /> : null}
-          </article>
+          {pronostico ? (
+            <article className="panel bloque">
+              <h2>Pronóstico al cierre · {datos.ciclo.finTexto}</h2>
+              <p className="sub explicacion">
+                Día {pronostico.corridos} de {pronostico.cicloDias} · ritmo{" "}
+                {pronostico.ritmoDiario ??
+                  Math.round(((pronostico.total ?? pronostico.clave + pronostico.mix) / pronostico.corridos) * 10) / 10}{" "}
+                u/día. Proyección lineal del ritmo actual; si el ritmo cambia, cambia el número.
+              </p>
+              <div className="pronostico-cabeza">
+                <span>Ahora</span>
+                <span>Al cierre</span>
+              </div>
+              <ul className="pronostico-lista">
+                <PronosticoFila
+                  etiqueta="Clave"
+                  ahora={pronostico.clave}
+                  proyectado={pronostico.claveProyectada}
+                  color={COLOR_CLAVE}
+                  maximo={pronostico.totalProyectado || pronostico.claveProyectada + pronostico.mixProyectada}
+                />
+                <PronosticoFila
+                  etiqueta="MIX"
+                  ahora={pronostico.mix}
+                  proyectado={pronostico.mixProyectada}
+                  color={COLOR_MIX}
+                  maximo={pronostico.totalProyectado || pronostico.claveProyectada + pronostico.mixProyectada}
+                />
+                <PronosticoFila
+                  etiqueta="Total"
+                  ahora={pronostico.total ?? pronostico.clave + pronostico.mix}
+                  proyectado={pronostico.totalProyectado ?? pronostico.claveProyectada + pronostico.mixProyectada}
+                  color="#111111"
+                  maximo={pronostico.totalProyectado || pronostico.claveProyectada + pronostico.mixProyectada}
+                />
+              </ul>
+            </article>
+          ) : null}
           <div className="dos-conteos">
             <article className="panel">
               <h2>Ranking de modelos · {rango}</h2>
@@ -369,24 +427,15 @@ export default function Ventas() {
               {departamentos.length ? <Barras items={departamentos} /> : <p className="sub">Sin registros.</p>}
             </article>
           </div>
-          {pronostico ? (
-            <article className="panel bloque">
-              <h2>Pronóstico de ventas al {datos.ciclo.finTexto}</h2>
-              <p className="sub explicacion">
-                Ritmo de los {pronostico.corridos} días ya corridos, llevado a los {pronostico.cicloDias} días del ciclo. Si el ritmo cambia, la proyección cambia.
-              </p>
-              <div className="corte-leyenda">
-                <span>
-                  <i style={{ background: COLOR_CLAVE }} />
-                  Clave {pronostico.clave} ahora · {pronostico.claveProyectada} al cierre
-                </span>
-                <span>
-                  <i style={{ background: COLOR_MIX }} />
-                  MIX {pronostico.mix} ahora · {pronostico.mixProyectada} al cierre
-                </span>
-              </div>
-            </article>
-          ) : null}
+          <article className="panel bloque">
+            <h2>Top 10 vendedores fijos · {rango}</h2>
+            <p className="sub explicacion">
+              {fijos.length
+                ? `Los 10 con más ventas de la hoja Fijos. Sumados, los vendedores fijos tienen ${conteos.ventasFijos} ventas. El porcentaje es sobre ese total.`
+                : "Esos vendedores no aparecen en este archivo."}
+            </p>
+            {fijos.length ? <Barras items={fijos} base={conteos.ventasFijos} ancha /> : null}
+          </article>
         </>
       ) : null}
       {consultaAbierta ? (
@@ -398,12 +447,14 @@ export default function Ventas() {
                 Cerrar
               </button>
             </div>
-            <p className="sub explicacion">Busca un código de Fijos o un Uploader ID en el reporte actual.</p>
+            <p className="sub explicacion">
+              Busca un código de Fijos (BOS…) o un Uploader ID (BOV…) en el reporte actual.
+            </p>
             <form className="consulta-forma" onSubmit={buscarCodigo}>
               <input
                 value={codigoBusqueda}
                 onChange={(evento) => setCodigoBusqueda(evento.target.value)}
-                placeholder="BOS14102922"
+                placeholder="BOS… o BOV… (Uploader ID)"
                 autoFocus
               />
               <button type="submit" className="btn" disabled={buscandoCodigo || !codigoBusqueda.trim()}>
@@ -414,42 +465,69 @@ export default function Ventas() {
             {consulta && !consulta.encontrado ? <p className="sub">Ese código no está en el reporte.</p> : null}
             {consulta?.encontrado ? (
               <div className="consulta-resultado">
-                <p className="consulta-ok">Información encontrada</p>
-                <div className="consulta-banner">
-                  <strong>
-                    Comisión del ciclo
-                    {consulta.semana ? ` · semana ${consulta.semana}` : ""}
-                  </strong>
-                  <span>{consulta.rango}</span>
+                <div className="consulta-meta">
+                  <p className={`consulta-tipo ${consulta.tipo === "uploader" ? "uploader" : "fijos"}`}>
+                    {consulta.tipo === "uploader" ? "Consulta por UPLOADER" : "Consulta por Fijos"}
+                  </p>
+                  <div className="consulta-banner">
+                    <strong>{consulta.semana ? `Semana ${consulta.semana}` : "Reporte del ciclo"}</strong>
+                    <span>{consulta.rango}</span>
+                  </div>
                 </div>
                 <dl className="consulta-ficha">
-                  <div>
+                  <div className="consulta-ficha-nombre">
                     <dt>Nombre</dt>
                     <dd>{consulta.nombre || "Sin nombre"}</dd>
                   </div>
-                  <div>
-                    <dt>Código</dt>
-                    <dd>{consulta.codigo}</dd>
-                  </div>
-                  {consulta.uploaderId ? (
-                    <div>
-                      <dt>Uploader ID</dt>
-                      <dd>{consulta.uploaderId}</dd>
-                    </div>
-                  ) : null}
-                  <div>
-                    <dt>Tienda</dt>
-                    <dd>{consulta.nombresTienda.length ? consulta.nombresTienda.join(", ") : "Sin tienda"}</dd>
-                  </div>
-                  <div>
-                    <dt>Shop ID</dt>
-                    <dd>{consulta.tiendas.length ? consulta.tiendas.join(", ") : "Sin Shop ID"}</dd>
-                  </div>
-                  <div>
-                    <dt>Ciudad</dt>
-                    <dd>{consulta.ciudades.length ? consulta.ciudades.join(", ") : "Sin ciudad"}</dd>
-                  </div>
+                  {consulta.tipo === "uploader" ? (
+                    <>
+                      <div>
+                        <dt>Uploader ID</dt>
+                        <dd>{consulta.uploaderId || "—"}</dd>
+                      </div>
+                      <div>
+                        <dt>Código</dt>
+                        <dd>{consulta.codigo || "—"}</dd>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <dt>Código</dt>
+                        <dd>{consulta.codigo || "—"}</dd>
+                      </div>
+                      <div>
+                        <dt>Uploader ID</dt>
+                        <dd>{consulta.uploaderId || "—"}</dd>
+                      </div>
+                    </>
+                  )}
                 </dl>
+                <div className="consulta-seccion">
+                  <h3 className="consulta-seccion-titulo">Tiendas</h3>
+                  {(consulta.locales || []).length ? (
+                    <table className="lista consulta-locales">
+                      <thead>
+                        <tr>
+                          <th>Tienda</th>
+                          <th>Shop ID</th>
+                          <th>Ciudad</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {consulta.locales.map((local) => (
+                          <tr key={`${local.shopId}-${local.tienda}`}>
+                            <td>{local.tienda}</td>
+                            <td>{local.shopId}</td>
+                            <td>{local.ciudad}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p className="sub">Sin tiendas en este reporte.</p>
+                  )}
+                </div>
                 <div className="consulta-corte">
                   <span>
                     <i style={{ background: COLOR_CLAVE }} />
@@ -461,39 +539,44 @@ export default function Ventas() {
                   </span>
                   <strong className="corte-total">Total {consulta.total}</strong>
                 </div>
-                {consulta.modelos.length ? (
-                  <>
-                    <table className="lista">
-                      <thead>
-                        <tr>
-                          <th>Modelo</th>
-                          <th>Estado</th>
-                          <th className="derecha">Ventas</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {consulta.modelos.map((fila) => (
-                          <tr key={`${fila.modelo}-${fila.estado}`}>
-                            <td>{fila.modelo}</td>
-                            <td>
-                              <span className={fila.estado === "Activado" ? "consulta-estado activado" : "consulta-estado no-activado"}>
-                                {fila.estado}
-                              </span>
-                            </td>
-                            <td className="derecha">{fila.ventas}</td>
+                <div className="consulta-seccion">
+                  <h3 className="consulta-seccion-titulo">Modelos y comisión</h3>
+                  {consulta.modelos.length ? (
+                    <>
+                      <table className="lista">
+                        <thead>
+                          <tr>
+                            <th>Modelo</th>
+                            <th>Estado</th>
+                            <th className="derecha">Ventas</th>
+                            <th className="derecha">Comisión Bs</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <p className="sub">
-                      {consulta.modelos.length} registro{consulta.modelos.length === 1 ? "" : "s"}
-                    </p>
-                  </>
-                ) : (
-                  <p className="sub">Ese código está en Fijos y no tiene ventas en este reporte.</p>
-                )}
+                        </thead>
+                        <tbody>
+                          {consulta.modelos.map((fila) => (
+                            <tr key={`${fila.modelo}-${fila.estado}`}>
+                              <td>{fila.modelo}</td>
+                              <td>
+                                <span className={fila.estado === "Activado" ? "consulta-estado activado" : "consulta-estado no-activado"}>
+                                  {fila.estado}
+                                </span>
+                              </td>
+                              <td className="derecha">{fila.ventas}</td>
+                              <td className="derecha">{formatoBs(fila.comisionBs)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <p className="sub">
+                        {consulta.modelos.length} modelo{consulta.modelos.length === 1 ? "" : "s"} · comisión prorrateada por ventas
+                      </p>
+                    </>
+                  ) : (
+                    <p className="sub">Ese código está en Fijos y no tiene ventas en este reporte.</p>
+                  )}
+                </div>
                 <div className="consulta-comision">
-                  <span>Comisión total generada</span>
+                  <span>Comisión total del ciclo</span>
                   {consulta.comisionBs == null ? (
                     <>
                       <strong>—</strong>
@@ -501,19 +584,11 @@ export default function Ventas() {
                     </>
                   ) : (
                     <>
-                      <strong>
-                        {new Intl.NumberFormat("es-BO", {
-                          style: "currency",
-                          currency: "BOB",
-                          minimumFractionDigits: 2,
-                        })
-                          .format(consulta.comisionBs)
-                          .replace("BOB", "Bs")}
-                      </strong>
+                      <strong>{formatoBs(consulta.comisionBs)}</strong>
                       <p className="sub">
                         {consulta.comisionFuente === "profit"
-                          ? `Desde el PROFIT de Fijos, con ${consulta.tipoCambio ?? 8} Bs por dólar del libro.`
-                          : "Sale de Comision Bs. de Fijos del ciclo."}
+                          ? `Desde el PROFIT de Fijos, con ${consulta.tipoCambio ?? 8} Bs por dólar del libro. Por modelo: prorrateo según ventas.`
+                          : "Sale de Comision Bs. de Fijos del ciclo. Por modelo: prorrateo según ventas."}
                       </p>
                     </>
                   )}

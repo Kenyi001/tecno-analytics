@@ -198,14 +198,19 @@ function pronosticoVentas(columnas, filas, ciclo) {
     if (grupoModelo(fila?.[iMod]) === "Clave") clave += 1;
     else mix += 1;
   }
+  const total = clave + mix;
   const proyectar = (ventas) => Math.round((ventas / corridos) * cicloDias);
+  const ritmoDiario = Math.round((total / corridos) * 10) / 10;
   return {
     clave,
     mix,
+    total,
     corridos,
     cicloDias,
+    ritmoDiario,
     claveProyectada: proyectar(clave),
     mixProyectada: proyectar(mix),
+    totalProyectado: proyectar(total),
   };
 }
 
@@ -328,6 +333,43 @@ function unicos(valores) {
   );
 }
 
+function localesDe(propias, iShop, iNombreTienda, iCiudad) {
+  const mapa = new Map();
+  for (const fila of propias) {
+    const shopId = iShop >= 0 ? String(fila?.[iShop] || "").trim() : "";
+    const tienda = iNombreTienda >= 0 ? String(fila?.[iNombreTienda] || "").trim() : "";
+    const ciudad = iCiudad >= 0 ? String(fila?.[iCiudad] || "").trim() : "";
+    const llave = shopId || tienda || ciudad;
+    if (!llave) continue;
+    if (!mapa.has(llave)) mapa.set(llave, { tienda: tienda || "Sin tienda", shopId: shopId || "—", ciudad: ciudad || "—" });
+  }
+  return [...mapa.values()].sort(
+    (a, b) => a.tienda.localeCompare(b.tienda, "es") || a.shopId.localeCompare(b.shopId, "es"),
+  );
+}
+
+function modelosConComision(mapa, totalVentas, comisionBs) {
+  const filas = [...mapa.entries()]
+    .map(([llave, ventas]) => {
+      const [modelo, estado] = llave.split("\t");
+      return { modelo, estado, ventas };
+    })
+    .sort((a, b) => b.ventas - a.ventas || a.modelo.localeCompare(b.modelo, "es") || a.estado.localeCompare(b.estado, "es"));
+  if (comisionBs == null || !totalVentas) {
+    return filas.map((fila) => ({ ...fila, comisionBs: null }));
+  }
+  let asignado = 0;
+  return filas.map((fila, indice) => {
+    if (indice === filas.length - 1) {
+      const resto = Math.round((comisionBs - asignado) * 100) / 100;
+      return { ...fila, comisionBs: resto };
+    }
+    const parte = Math.round(((comisionBs * fila.ventas) / totalVentas) * 100) / 100;
+    asignado += parte;
+    return { ...fila, comisionBs: parte };
+  });
+}
+
 export async function consultarCodigo(codigo) {
   const buscado = String(codigo || "").replace(/\s+/g, "").trim().toUpperCase();
   if (!/^[A-Z0-9]{4,24}$/.test(buscado)) return { encontrado: false };
@@ -350,12 +392,17 @@ export async function consultarCodigo(codigo) {
     }
   }
   let persona = roster.find((item) => String(item.codigo || "").replace(/\s+/g, "").toUpperCase() === buscado);
+  const matchFijos = Boolean(persona);
   const iUp = indiceColumna(columnas, ["Uploader"]);
   const iId = indiceColumna(columnas, ["Uploader ID"]);
   let propias = filas.filter((fila) => {
     const id = iId >= 0 ? String(fila?.[iId] || "").replace(/\s+/g, "").trim().toUpperCase() : "";
     if (id && id === buscado) return true;
     return Boolean(persona?.clave && iUp >= 0 && claveNombre(fila?.[iUp]) === persona.clave);
+  });
+  const matchUploaderId = propias.some((fila) => {
+    const id = iId >= 0 ? String(fila?.[iId] || "").replace(/\s+/g, "").trim().toUpperCase() : "";
+    return id && id === buscado;
   });
   if (!persona && propias.length && iUp >= 0) {
     const claveVenta = claveNombre(propias[0]?.[iUp]);
@@ -365,6 +412,7 @@ export async function consultarCodigo(codigo) {
     propias = filas.filter((fila) => iUp >= 0 && claveNombre(fila?.[iUp]) === persona.clave);
   }
   if (!persona && !propias.length) return { encontrado: false };
+  const tipo = matchFijos && !matchUploaderId ? "fijos" : matchUploaderId || buscado.startsWith("BOV") ? "uploader" : "fijos";
   const iMod = indiceColumna(columnas, ["Model"]);
   const iAct = indiceColumna(columnas, ["Activation Date"]);
   const iShop = indiceColumna(columnas, ["Shop ID"]);
@@ -382,27 +430,29 @@ export async function consultarCodigo(codigo) {
     else ventasMix += 1;
   }
   const dia = jsons[0].pathname.split("/").pop().replace(/\.json$/, "");
-  const uploaderId = unicos(propias.map((fila) => (iId >= 0 ? fila?.[iId] : ""))).find((id) => /^BOV/i.test(id)) || (buscado.startsWith("BOV") ? buscado : "");
+  const uploaderId =
+    unicos(propias.map((fila) => (iId >= 0 ? fila?.[iId] : ""))).find((id) => /^BOV/i.test(id)) ||
+    (buscado.startsWith("BOV") ? buscado : "");
+  const locales = localesDe(propias, iShop, iNombreTienda, iCiudad);
+  const comisionBs = persona?.comisionBs ?? null;
+  const total = propias.length;
   return {
     encontrado: true,
+    tipo,
     nombre: persona?.nombre || (iUp >= 0 ? String(propias[0]?.[iUp] || "").replace(/\s+/g, " ").trim() : ""),
-    codigo: persona?.codigo || buscado,
-    uploaderId,
+    codigo: persona?.codigo || (tipo === "uploader" ? "" : buscado),
+    uploaderId: uploaderId || (tipo === "uploader" ? buscado : ""),
     semana: semanaIso(dia),
     rango: `${fechaCorta(ciclo.inicio)} – ${fechaCorta(dia)}`,
-    ciudades: unicos(propias.map((fila) => (iCiudad >= 0 ? fila?.[iCiudad] : ""))),
-    tiendas: unicos(propias.map((fila) => (iShop >= 0 ? fila?.[iShop] : ""))),
-    nombresTienda: unicos(propias.map((fila) => (iNombreTienda >= 0 ? fila?.[iNombreTienda] : ""))),
-    modelos: [...mapa.entries()]
-      .map(([llave, ventas]) => {
-        const [modelo, estado] = llave.split("\t");
-        return { modelo, estado, ventas };
-      })
-      .sort((a, b) => b.ventas - a.ventas || a.modelo.localeCompare(b.modelo, "es") || a.estado.localeCompare(b.estado, "es")),
+    locales,
+    ciudades: unicos(locales.map((item) => item.ciudad).filter((c) => c && c !== "—")),
+    tiendas: unicos(locales.map((item) => item.shopId).filter((c) => c && c !== "—")),
+    nombresTienda: unicos(locales.map((item) => item.tienda).filter((c) => c && c !== "Sin tienda")),
+    modelos: modelosConComision(mapa, total, comisionBs),
     clave: ventasClave,
     mix: ventasMix,
-    total: propias.length,
-    comisionBs: persona?.comisionBs ?? null,
+    total,
+    comisionBs,
     comisionFuente: persona?.comisionFuente || null,
     tipoCambio: persona?.tipoCambio ?? null,
   };

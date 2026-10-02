@@ -264,12 +264,12 @@ h2 { margin: 0 0 12px; font-size: 14px; font-weight: 650; }
   overflow: auto;
 }
 .consulta {
-  width: min(720px, 100%);
+  width: min(880px, 100%);
   max-height: calc(100vh - 96px);
   overflow: auto;
   background: white;
   border-radius: 10px;
-  padding: 16px;
+  padding: 18px;
 }
 .consulta-cabeza { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .consulta-forma { display: flex; gap: 8px; margin-bottom: 12px; }
@@ -281,15 +281,29 @@ h2 { margin: 0 0 12px; font-size: 14px; font-weight: 650; }
   border-radius: 6px;
 }
 .consulta-forma input:focus { outline: 2px solid #009bde; border-color: #009bde; }
-.consulta-resultado { display: grid; gap: 12px; }
-.consulta-ok {
+.consulta-resultado { display: grid; gap: 16px; }
+.consulta-meta {
+  display: grid;
+  grid-template-columns: minmax(180px, auto) 1fr;
+  gap: 10px;
+  align-items: stretch;
+}
+.consulta-tipo {
   margin: 0;
-  padding: 8px 10px;
-  border-radius: 6px;
-  background: #ecfdf5;
-  color: #047857;
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 8px;
   font-size: 13px;
   font-weight: 650;
+}
+.consulta-tipo.fijos {
+  background: #003366;
+  color: white;
+}
+.consulta-tipo.uploader {
+  background: #009bde;
+  color: white;
 }
 .consulta-banner {
   margin: 0;
@@ -302,13 +316,15 @@ h2 { margin: 0 0 12px; font-size: 14px; font-weight: 650; }
 .consulta-banner span { display: block; margin-top: 4px; font-size: 13px; opacity: 0.9; }
 .consulta-ficha {
   display: grid;
-  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 16px;
   margin: 0;
-  padding: 12px;
+  padding: 14px;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   background: #f9fafb;
 }
+.consulta-ficha-nombre { grid-column: 1 / -1; }
 .consulta-ficha div { display: grid; gap: 2px; }
 .consulta-ficha dt {
   margin: 0;
@@ -319,6 +335,22 @@ h2 { margin: 0 0 12px; font-size: 14px; font-weight: 650; }
   letter-spacing: 0.02em;
 }
 .consulta-ficha dd { margin: 0; color: #111111; font-size: 14px; }
+.consulta-seccion { display: grid; gap: 8px; }
+.consulta-seccion-titulo {
+  margin: 0;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.consulta-locales { margin: 0; }
+.consulta-locales th,
+.consulta-locales td { font-size: 13px; }
+@media (max-width: 640px) {
+  .consulta-meta { grid-template-columns: 1fr; }
+  .consulta-ficha { grid-template-columns: 1fr; }
+}
 .consulta-corte {
   display: flex;
   flex-wrap: wrap;
@@ -365,6 +397,68 @@ h2 { margin: 0 0 12px; font-size: 14px; font-weight: 650; }
   font-variant-numeric: tabular-nums;
 }
 .consulta-comision .sub { margin-top: 6px; }
+.pronostico-cabeza {
+  display: grid;
+  grid-template-columns: 88px 64px 1fr 64px;
+  gap: 8px;
+  margin: 0 0 6px;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.pronostico-cabeza span:nth-child(1) { grid-column: 2; text-align: right; }
+.pronostico-cabeza span:nth-child(2) { grid-column: 4; text-align: right; }
+.pronostico-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.pronostico-fila {
+  display: grid;
+  grid-template-columns: 88px 64px 1fr 64px;
+  gap: 8px;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+}
+.pronostico-etiqueta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 650;
+}
+.pronostico-etiqueta i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 99px;
+}
+.pronostico-ahora,
+.pronostico-cierre {
+  text-align: right;
+  font-size: 14px;
+  font-weight: 650;
+  color: #111111;
+}
+.pronostico-cierre { color: #003366; }
+.pronostico-riel {
+  display: block;
+  height: 10px;
+  border-radius: 99px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+.pronostico-lleno {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  min-width: 0;
+}
 .zoom-hoja { display: inline-flex; align-items: center; gap: 4px; }
 .zoom-hoja .chip { min-width: 34px; justify-content: center; }
 .chip.accion { background: #111111; color: white; border-color: #111111; }
