@@ -94,7 +94,8 @@ export async function bajarExcelStock(tokens, usuario, modelos = []) {
   }
   const json = await leerJson(respuesta);
   if (!respuesta.ok || json?.success === false || json?.code === "400") {
-    throw new Error("DCR no aceptó el pedido de stock");
+    const detalle = json?.msg || json?.message || json?.code || respuesta.status;
+    throw new Error(`DCR no aceptó el pedido de stock (${detalle})`);
   }
   if (json?.data === true) return esperarAviso(tokens, usuario, previos);
   throw new Error("El pedido de stock no devolvió la tarea");
