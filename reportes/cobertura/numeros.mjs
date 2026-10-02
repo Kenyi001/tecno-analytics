@@ -5,9 +5,13 @@ import fs from "node:fs";
 import path from "node:path";
 import JSZip from "jszip";
 
-const LIBRO = "C:\\Users\\daxke\\Downloads\\_Temp\\Tecno\\Reportes\\Cobertura\\Cobertura LK7 31-08.xlsx";
-const RESUMEN = "C:\\Users\\daxke\\Downloads\\_Temp\\Tecno\\Reportes\\Cobertura\\numeros.json";
-const CIERRE = "2026-10-20";
+const LIBRO =
+  process.env.COBERTURA_LIBRO ||
+  "C:\\Users\\daxke\\Downloads\\_Temp\\Tecno\\Reportes\\Cobertura\\Cobertura LK7 31-08.xlsx";
+const RESUMEN =
+  process.env.COBERTURA_RESUMEN ||
+  "C:\\Users\\daxke\\Downloads\\_Temp\\Tecno\\Reportes\\Cobertura\\numeros.json";
+const CIERRE = process.env.COBERTURA_CIERRE || "2026-10-20";
 const RANGO_VIEJO = 113070;
 
 function xml(texto) {

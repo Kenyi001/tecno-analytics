@@ -1,0 +1,30 @@
+name: Cobertura del ciclo
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: cobertura-ciclo
+  cancel-in-progress: false
+
+jobs:
+  extraer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Instalar el trabajo
+        run: npm ci
+      - name: Instalar Chrome
+        run: npx puppeteer browsers install chrome
+      - name: Bajar stock, pegar Datos y subir
+        run: node reportes/cobertura/actualizar.mjs
+        env:
+          DCR_USER: ${{ secrets.DCR_USER }}
+          DCR_PASSWORD: ${{ secrets.DCR_PASSWORD }}
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
