@@ -13,4 +13,11 @@ export const REPORTES = [
     hora: "",
     detalle: "Tiendas con LK7, Lamborghini Black y LK7K.",
   },
+  {
+    id: "mayorista",
+    nombre: "Stock Mayorista",
+    ruta: "/mayorista",
+    hora: "",
+    detalle: "Stock en canal mayorista por ciudad y modelo.",
+  },
 ];

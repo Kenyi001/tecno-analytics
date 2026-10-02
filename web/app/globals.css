@@ -742,10 +742,101 @@ label.btn.ocupado { opacity: 0.65; pointer-events: none; }
 .tarjeta-entrada .btn { margin-top: 8px; }
 .error { margin: 0; color: #b42318; font-size: 13px; }
 
+.tabla-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 8px;
+}
+.tabla-densa {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.tabla-densa th,
+.tabla-densa td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: right;
+  white-space: nowrap;
+}
+.tabla-densa th:first-child,
+.tabla-densa td:first-child {
+  text-align: left;
+}
+.tabla-densa thead th {
+  position: sticky;
+  top: 0;
+  background: #f9fafb;
+  font-weight: 650;
+  color: #374151;
+  z-index: 1;
+}
+.tabla-densa .fila-total td {
+  background: #f3f4f6;
+  font-weight: 650;
+}
+.tabla-densa .fila-ciudad td {
+  background: #fafafa;
+  font-weight: 650;
+}
+.tabla-densa .fila-mayorista td.indent {
+  padding-left: 22px;
+  color: #4b5563;
+}
+.tabla-densa .sticky-col {
+  position: sticky;
+  left: 0;
+  background: inherit;
+  z-index: 2;
+  text-align: left;
+}
+.tabla-densa thead .sticky-col { background: #f9fafb; z-index: 3; }
+.tabla-densa .fila-ciudad .sticky-col { background: #fafafa; }
+.tabla-densa .fila-total .sticky-col { background: #f3f4f6; }
+.tabla-densa .fila-mayorista .sticky-col { background: white; }
+.btn-texto {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+  color: inherit;
+  text-align: left;
+}
+.mayorista-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+.mayorista-filtros label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 650;
+  color: #6b7280;
+}
+.mayorista-filtros input,
+.mayorista-filtros select {
+  height: 34px;
+  padding: 0 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  min-width: 140px;
+}
+.mayorista-tabla-wrap { max-height: 70vh; overflow: auto; }
+.cobertura-tabla-panel { margin-top: 12px; }
+
 @media (max-width: 800px) {
   .menu { display: none; }
   .numeros, .dos-conteos, .tres-conteos { grid-template-columns: 1fr; }
   .encabezado { flex-direction: column; }
   .actualizar { align-items: flex-start; max-width: none; }
   .actualizar .sub { text-align: left; }
+  .reporte-actual { flex-direction: column; align-items: stretch; }
+  .reporte-acciones { justify-content: flex-start; }
 }

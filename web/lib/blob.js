@@ -10,6 +10,21 @@ import {
   sumarDias,
   topConOtros,
 } from "./proyeccion";
+import {
+  MARCA_DEFAULT,
+  RUTA_JSON_MAYORISTA,
+  RUTA_LIBRO_MAYORISTA,
+  UMBRAL_DEFAULT,
+  pivotMayorista,
+} from "./mayorista";
+import { tablasDesdeHoja2, tablasDesdeShopBuffer } from "./coberturaTablas";
+
+export {
+  RUTA_JSON_MAYORISTA,
+  RUTA_LIBRO_MAYORISTA,
+  MARCA_DEFAULT as MARCA_MAYORISTA_DEFAULT,
+  UMBRAL_DEFAULT as UMBRAL_MAYORISTA_DEFAULT,
+} from "./mayorista";
 
 export const RUTA_COBERTURA = "cobertura/actual.json";
 export const RUTA_LIBRO_COBERTURA = "cobertura/actual.xlsx";
@@ -558,6 +573,8 @@ function vistaCobertura(completo, origen, tieneLibro) {
     diasFaltan: completo.diasFaltan || 0,
     filasDatos: completo.filasDatos || 0,
     grupos: completo.grupos || {},
+    tablaTodas: completo.tablaTodas || [],
+    tablaTop300: completo.tablaTop300 || [],
   };
 }
 
@@ -595,6 +612,8 @@ export async function marcarLibroCobertura() {
     actual = coberturaBase();
   }
   actual.generado = new Date().toISOString();
+  const libro = await bajar(RUTA_LIBRO_COBERTURA);
+  if (libro) await enriquecerCoberturaConTablas(actual, libro);
   return subirCobertura(actual);
 }
 
@@ -607,4 +626,80 @@ export async function subirCobertura(json) {
     contentType: "application/json",
   });
   return vistaCobertura(json, "blob", true);
+}
+
+export async function libroMayorista() {
+  return bajar(RUTA_LIBRO_MAYORISTA);
+}
+
+export async function resumenMayorista(opts = {}) {
+  const umbralFecha = opts.umbralFecha || UMBRAL_DEFAULT;
+  const marca = opts.marca || MARCA_DEFAULT;
+  const libro = await bajar(RUTA_LIBRO_MAYORISTA);
+  if (libro) {
+    try {
+      return { ...(await pivotMayorista(libro, { umbralFecha, marca })), tieneLibro: true, origen: "xlsx" };
+    } catch (error) {
+      const bytes = await bajar(RUTA_JSON_MAYORISTA);
+      if (bytes) {
+        const guardado = JSON.parse(bytes.toString("utf8"));
+        return { ...guardado, tieneLibro: true, origen: "json", aviso: error.message };
+      }
+      throw error;
+    }
+  }
+  const bytes = await bajar(RUTA_JSON_MAYORISTA);
+  if (bytes) return { ...JSON.parse(bytes.toString("utf8")), tieneLibro: false, origen: "json" };
+  return {
+    tieneLibro: false,
+    origen: "vacio",
+    umbralFecha,
+    marca,
+    modelos: [],
+    ciudades: [],
+    totalesModelo: {},
+    total: 0,
+    filasUsadas: 0,
+  };
+}
+
+export async function publicarMayoristaDesdeLibro(buffer, opts = {}) {
+  const resumen = await pivotMayorista(buffer, opts);
+  await put(RUTA_JSON_MAYORISTA, JSON.stringify(resumen), {
+    access: "private",
+    token: token(),
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    contentType: "application/json",
+  });
+  return { ...resumen, tieneLibro: true, origen: "xlsx" };
+}
+
+export async function marcarLibroMayorista(opts = {}) {
+  const libro = await bajar(RUTA_LIBRO_MAYORISTA);
+  if (!libro) throw new Error("No hay Excel de mayorista.");
+  return publicarMayoristaDesdeLibro(libro, opts);
+}
+
+export async function enriquecerCoberturaConTablas(json, libroBuffer) {
+  let tablas = null;
+  if (libroBuffer) {
+    try {
+      tablas = await tablasDesdeShopBuffer(libroBuffer);
+    } catch {
+      tablas = null;
+    }
+    if (!tablas?.tablaTodas?.length) {
+      try {
+        tablas = await tablasDesdeHoja2(libroBuffer);
+      } catch {
+        tablas = null;
+      }
+    }
+  }
+  if (tablas) {
+    json.tablaTodas = tablas.tablaTodas;
+    json.tablaTop300 = tablas.tablaTop300;
+  }
+  return json;
 }

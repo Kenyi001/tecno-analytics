@@ -12,7 +12,9 @@ export default function Escritorio({ children }) {
       ? "Ventas"
       : pathname.startsWith("/cobertura")
         ? "Cobertura"
-        : "Inicio";
+        : pathname.startsWith("/mayorista")
+          ? "Stock Mayorista"
+          : "Inicio";
 
   return (
     <div className="desk">

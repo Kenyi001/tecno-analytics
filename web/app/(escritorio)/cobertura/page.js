@@ -251,6 +251,78 @@ export default function Cobertura() {
               );
             })}
           </div>
+
+          {datos.tablaTodas?.length ? (
+            <article className="panel cobertura-tabla-panel">
+              <h2>Todas las tiendas</h2>
+              <div className="tabla-scroll">
+                <table className="tabla-densa">
+                  <thead>
+                    <tr>
+                      <th>Ciudad</th>
+                      <th>Circuito</th>
+                      <th>Total tiendas</th>
+                      <th>Cuenta LK7</th>
+                      <th>LK7 (L)</th>
+                      <th>% LK7</th>
+                      <th>% LK7K</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {datos.tablaTodas.map((fila, i) => (
+                      <tr key={`todas-${i}`} className={fila.esTotal ? "fila-total" : undefined}>
+                        <td>{fila.ciudad}</td>
+                        <td>{fila.circuito}</td>
+                        <td>{numero(fila.totalTiendas)}</td>
+                        <td>{numero(fila.lk7)}</td>
+                        <td>{numero(fila.lambo)}</td>
+                        <td>{fila.pctLk7}%</td>
+                        <td>{fila.pctLk7k}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </article>
+          ) : null}
+
+          {datos.tablaTop300?.length ? (
+            <article className="panel cobertura-tabla-panel">
+              <h2>Tiendas Top 300</h2>
+              <div className="tabla-scroll">
+                <table className="tabla-densa">
+                  <thead>
+                    <tr>
+                      <th>Ciudad</th>
+                      <th>Circuito</th>
+                      <th>Total tiendas</th>
+                      <th>Cuenta LK7</th>
+                      <th>LK7 (L)</th>
+                      <th>% LK7</th>
+                      <th>% LK7K</th>
+                      <th>Stock LK7</th>
+                      <th>Stock LK6</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {datos.tablaTop300.map((fila, i) => (
+                      <tr key={`top-${i}`} className={fila.esTotal ? "fila-total" : undefined}>
+                        <td>{fila.ciudad}</td>
+                        <td>{fila.circuito}</td>
+                        <td>{numero(fila.totalTiendas)}</td>
+                        <td>{numero(fila.lk7)}</td>
+                        <td>{numero(fila.lambo)}</td>
+                        <td>{fila.pctLk7}%</td>
+                        <td>{fila.pctLk7k}%</td>
+                        <td>{numero(fila.stockLk7)}</td>
+                        <td>{numero(fila.stockLk6)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </article>
+          ) : null}
         </>
       ) : null}
     </section>

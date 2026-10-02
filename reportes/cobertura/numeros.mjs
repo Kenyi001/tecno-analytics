@@ -117,25 +117,173 @@ function columnaTop(encabezados) {
   return "E";
 }
 
+function colPorTitulo(encabezados, predicado) {
+  for (const [columna, titulo] of encabezados.entries()) {
+    if (predicado(String(titulo || "").trim().toLowerCase())) return columna;
+  }
+  return null;
+}
+
+function pctTabla(parte, total) {
+  if (!total) return 0;
+  return Math.round((parte / total) * 1000) / 10;
+}
+
+function tituloCiudadShop(texto) {
+  const crudo = String(texto || "").trim();
+  if (!crudo) return "(sin ciudad)";
+  const lower = crudo.toLowerCase();
+  if (lower.includes("el alto")) return "El Alto";
+  if (lower.includes("la paz")) return "La Paz";
+  if (lower.includes("santa cruz")) return "Santa Cruz";
+  if (lower.includes("cochabamba")) return "Cochabamba";
+  return crudo;
+}
+
+function agruparTablasCobertura(tiendas, soloTop) {
+  const grupos = new Map();
+  for (const t of tiendas) {
+    if (soloTop && !t.top) continue;
+    const ciudad = t.ciudad || "(sin ciudad)";
+    const circuito = t.circuito || "(sin circuito)";
+    const llave = `${ciudad}\t${circuito}`;
+    if (!grupos.has(llave)) {
+      grupos.set(llave, {
+        ciudad,
+        circuito,
+        totalTiendas: 0,
+        lk7: 0,
+        lambo: 0,
+        lk7k: 0,
+        stockLk7: 0,
+        stockLk6: 0,
+      });
+    }
+    const g = grupos.get(llave);
+    g.totalTiendas += 1;
+    if (t.tieneLk7) g.lk7 += 1;
+    if (t.tieneLambo) g.lambo += 1;
+    if (t.tieneLk7k) g.lk7k += 1;
+    g.stockLk7 += t.stockLk7 || 0;
+    g.stockLk6 += t.stockLk6 || 0;
+  }
+  const porCiudad = new Map();
+  for (const g of grupos.values()) {
+    if (!porCiudad.has(g.ciudad)) porCiudad.set(g.ciudad, []);
+    porCiudad.get(g.ciudad).push(g);
+  }
+  const salida = [];
+  for (const ciudad of [...porCiudad.keys()].sort((a, b) => a.localeCompare(b, "es"))) {
+    const circuitos = porCiudad.get(ciudad).sort((a, b) => a.circuito.localeCompare(b.circuito, "es"));
+    let tot = 0;
+    let lk7 = 0;
+    let lambo = 0;
+    let lk7k = 0;
+    let stockLk7 = 0;
+    let stockLk6 = 0;
+    for (const c of circuitos) {
+      salida.push({
+        ciudad,
+        circuito: c.circuito,
+        totalTiendas: c.totalTiendas,
+        lk7: c.lk7,
+        lambo: c.lambo,
+        pctLk7: pctTabla(c.lk7, c.totalTiendas),
+        pctLk7k: pctTabla(c.lk7k, c.totalTiendas),
+        stockLk7: c.stockLk7,
+        stockLk6: c.stockLk6,
+        esTotal: false,
+      });
+      tot += c.totalTiendas;
+      lk7 += c.lk7;
+      lambo += c.lambo;
+      lk7k += c.lk7k;
+      stockLk7 += c.stockLk7;
+      stockLk6 += c.stockLk6;
+    }
+    salida.push({
+      ciudad: `${ciudad} Total`,
+      circuito: "",
+      totalTiendas: tot,
+      lk7,
+      lambo,
+      pctLk7: pctTabla(lk7, tot),
+      pctLk7k: pctTabla(lk7k, tot),
+      stockLk7,
+      stockLk6,
+      esTotal: true,
+    });
+  }
+  return salida;
+}
+
 function leerTiendas(shopXml, cadenas) {
   const tiendas = [];
   const muestras = new Set();
   const re = /<row r="(\d+)"[^>]*>[\s\S]*?<\/row>/g;
   let fila1 = null;
   let topCol = "E";
+  let deptCol = "D";
+  let circCol = "J";
+  let lk7Col = "K";
+  let lamboCol = "L";
+  let lk7kCol = "N";
   let encontrado;
   while ((encontrado = re.exec(shopXml))) {
     const celdas = mapaFila(encontrado[0], cadenas);
     if (encontrado[1] === "1") {
       fila1 = celdas;
       topCol = columnaTop(fila1);
+      deptCol =
+        colPorTitulo(fila1, (h) => h.includes("departament") || h === "departamento") || "D";
+      circCol =
+        colPorTitulo(fila1, (h) => /^[a-z]{2,4}-?\d/.test(h) || h === "circuito") ||
+        colPorTitulo(fila1, (h) => h.includes("concatenar")) ||
+        "J";
+      // Prefer short circuit column: scan later from data; default J
+      lk7Col =
+        colPorTitulo(fila1, (h) => h === "lk7") ||
+        colPorTitulo(fila1, (h) => h.includes("lk7") && !h.includes("lk7k") && !h.includes("(l)")) ||
+        "K";
+      lamboCol =
+        colPorTitulo(fila1, (h) => h.includes("lk7") && (h.includes("(l)") || h.includes("lambo"))) ||
+        "L";
+      lk7kCol = colPorTitulo(fila1, (h) => h.includes("lk7k")) || "N";
       continue;
     }
     const id = String(celdas.get("A") || "").trim();
     if (!id) continue;
     const marca = String(celdas.get(topCol) || "").trim();
     if (marca && muestras.size < 8 && marca.length < 24) muestras.add(marca);
-    tiendas.push({ id: id.toUpperCase(), top: esTop(marca) });
+    let circuito = String(celdas.get(circCol) || "").trim();
+    if (!/^[A-Z]{2,4}-?\d+/i.test(circuito)) {
+      const concat = String(celdas.get(circCol) || "");
+      const m = concat.match(/\/([A-Z]{2,4}-?\d+)\//i);
+      if (m) circuito = m[1];
+    }
+    // Si circCol quedó en concatenar, buscar columna con código corto en esta fila
+    if (!/^[A-Z]{2,4}-?\d+/i.test(circuito)) {
+      for (const [col, val] of celdas.entries()) {
+        if (/^[A-Z]{2,4}-?\d{1,3}$/i.test(String(val || "").trim())) {
+          circuito = String(val).trim();
+          break;
+        }
+      }
+    }
+    const nLk7 = Number(celdas.get(lk7Col) || 0) || 0;
+    const nLambo = Number(celdas.get(lamboCol) || 0) || 0;
+    const nLk7k = Number(celdas.get(lk7kCol) || 0) || 0;
+    tiendas.push({
+      id: id.toUpperCase(),
+      top: esTop(marca),
+      ciudad: tituloCiudadShop(celdas.get(deptCol)),
+      circuito: circuito || "(sin circuito)",
+      tieneLk7: nLk7 > 0,
+      tieneLambo: nLambo > 0,
+      tieneLk7k: nLk7k > 0,
+      stockLk7: nLk7,
+      stockLk6: 0,
+    });
   }
   return { tiendas, encabezados: fila1, topCol, muestras: [...muestras] };
 }
@@ -324,6 +472,18 @@ const cortes = [
   ["lambo", "LK7 Lamborghini Black"],
   ["lk7k", "LK7K"],
 ];
+// Completar flags/stock desde Datos (cantidades reales)
+for (const tienda of tiendas) {
+  const cuenta = datos.stock.get(tienda.id);
+  if (!cuenta) continue;
+  if (cuenta.lk7 > 0) {
+    tienda.tieneLk7 = true;
+    tienda.stockLk7 = cuenta.lk7;
+  }
+  if (cuenta.lambo > 0) tienda.tieneLambo = true;
+  if (cuenta.lk7k > 0) tienda.tieneLk7k = true;
+}
+
 const resumen = {
   generado: new Date().toISOString(),
   ultimaFilaDatos: datos.ultima,
@@ -334,6 +494,8 @@ const resumen = {
   diasFaltan,
   cierre: CIERRE,
   grupos: {},
+  tablaTodas: agruparTablasCobertura(tiendas, false),
+  tablaTop300: agruparTablasCobertura(tiendas, true),
 };
 const filasHoja = [];
 for (const [corte, titulo] of cortes) {
