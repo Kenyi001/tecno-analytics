@@ -33,7 +33,10 @@ export default function Cobertura() {
   const [error, setError] = useState("");
   const [aviso, setAviso] = useState("");
   const [subiendo, setSubiendo] = useState(false);
+  const [actualizando, setActualizando] = useState(false);
+  const [progreso, setProgreso] = useState({ avance: 8, frase: "En fila para empezar." });
   const archivoRef = useRef(null);
+  const timer = useRef(null);
 
   function cargar() {
     return fetch("/api/cobertura", { cache: "no-store" })
@@ -47,7 +50,60 @@ export default function Cobertura() {
 
   useEffect(() => {
     cargar();
+    return () => {
+      if (timer.current) clearInterval(timer.current);
+    };
   }, []);
+
+  async function actualizar() {
+    if (!datos || actualizando || subiendo) return;
+    if (!datos.tieneLibro) {
+      setAviso("Primero sube el Excel de cobertura. Sin ese libro no se puede pegar el stock.");
+      return;
+    }
+    setAviso("");
+    setProgreso({ avance: 8, frase: "En fila para empezar." });
+    setActualizando(true);
+    const respuesta = await fetch("/api/cobertura", { method: "POST" });
+    const cuerpo = await respuesta.json().catch(() => ({}));
+    if (!respuesta.ok) {
+      setActualizando(false);
+      setAviso(cuerpo.aviso || "No se pudo pedir la actualización.");
+      return;
+    }
+    const desde = cuerpo.desde;
+    const limite = Date.now() + 28 * 60 * 1000;
+    timer.current = setInterval(async () => {
+      if (Date.now() > limite) {
+        clearInterval(timer.current);
+        setActualizando(false);
+        setAviso("La actualización sigue en curso. Vuelve a abrir Cobertura en unos minutos.");
+        return;
+      }
+      try {
+        const estado = await fetch(`/api/cobertura/estado?desde=${desde}`, { cache: "no-store" });
+        const cuerpoEstado = await estado.json();
+        if (cuerpoEstado.frase || cuerpoEstado.avance) {
+          setProgreso({
+            avance: cuerpoEstado.estado === "listo" ? 100 : cuerpoEstado.avance || 12,
+            frase: cuerpoEstado.frase || "Trabajando en la actualización.",
+          });
+        }
+        if (cuerpoEstado.estado === "listo") {
+          clearInterval(timer.current);
+          setProgreso({ avance: 100, frase: "Listo." });
+          await cargar();
+          setTimeout(() => setActualizando(false), 900);
+        } else if (cuerpoEstado.estado === "fallo") {
+          clearInterval(timer.current);
+          setActualizando(false);
+          setAviso(cuerpoEstado.aviso || "La actualización de cobertura no terminó.");
+        }
+      } catch {
+        // La siguiente vuelta vuelve a preguntar.
+      }
+    }, 8000);
+  }
 
   async function subirExcel(evento) {
     const archivo = evento.target.files?.[0];
@@ -87,14 +143,37 @@ export default function Cobertura() {
           </p>
         </div>
         <div className="actualizar">
+          {actualizando ? (
+            <div className="progreso" role="status" aria-live="polite">
+              <div className="progreso-pista">
+                <div className="progreso-barra" style={{ width: `${Math.max(8, Math.min(100, progreso.avance))}%` }} />
+              </div>
+              <p className="sub">{progreso.frase}</p>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="btn"
+              onClick={actualizar}
+              disabled={!datos || subiendo || !datos.tieneLibro}
+            >
+              Actualizar stock
+            </button>
+          )}
           {datos?.actualizadoTexto ? (
             <p className="sub">
               Última actualización {datos.actualizadoTexto}. Datos del Excel hasta {datos.referenciaTexto}.
             </p>
+          ) : datos?.tieneLibro ? (
+            <p className="sub">Todavía no hay una actualización de cobertura.</p>
+          ) : datos ? (
+            <p className="sub">Sube el Excel una vez para poder actualizar el stock desde DCR.</p>
           ) : null}
         </div>
       </div>
-      {aviso ? <p className="aviso">{aviso}</p> : null}
+      {aviso ? (
+        <p className={`aviso${aviso.startsWith("Excel subido") ? "" : " fallo"}`}>{aviso}</p>
+      ) : null}
       {error ? <p className="aviso fallo">{error}</p> : null}
       {!datos && !error ? <p className="aviso">Cargando cobertura…</p> : null}
       {datos ? (
