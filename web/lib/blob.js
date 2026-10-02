@@ -187,31 +187,80 @@ function diasEntre(inicio, fin) {
   return Math.round((hasta - desde) / 86400000) + 1;
 }
 
+function isoDeSerial(serial) {
+  const ms = Date.UTC(1899, 11, 30) + Math.round(serial) * 86400000;
+  const fecha = new Date(ms);
+  if (Number.isNaN(fecha.getTime())) return "";
+  const mes = String(fecha.getUTCMonth() + 1).padStart(2, "0");
+  const dia = String(fecha.getUTCDate()).padStart(2, "0");
+  return `${fecha.getUTCFullYear()}-${mes}-${dia}`;
+}
+
+function isoDeCelda(valor) {
+  if (valor == null || valor === "") return "";
+  if (typeof valor === "number" && valor > 20000 && valor < 80000) return isoDeSerial(valor);
+  const texto = String(valor).trim();
+  const iso = texto.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const dmy = texto.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})/);
+  if (dmy) return `${dmy[3]}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}`;
+  const n = Number(texto);
+  if (Number.isFinite(n) && n > 20000 && n < 80000) return isoDeSerial(n);
+  return "";
+}
+
+function unDecimal(valor) {
+  return Math.round(valor * 10) / 10;
+}
+
 function pronosticoVentas(columnas, filas, ciclo) {
   const iMod = columnas.indexOf("Model");
   if (iMod < 0 || !ciclo?.inicio || !ciclo?.hasta || !ciclo?.finEtiqueta) return null;
   const corridos = diasEntre(ciclo.inicio, ciclo.hasta);
   const cicloDias = diasEntre(ciclo.inicio, ciclo.finEtiqueta);
   if (corridos < 1 || cicloDias < 1) return null;
+  const iFecha = columnas.indexOf("Sales Date");
+  const porDia = new Map();
   let clave = 0;
   let mix = 0;
   for (const fila of filas) {
     if (grupoModelo(fila?.[iMod]) === "Clave") clave += 1;
     else mix += 1;
+    const dia = iFecha >= 0 ? isoDeCelda(fila?.[iFecha]) : "";
+    if (!dia) continue;
+    porDia.set(dia, (porDia.get(dia) || 0) + 1);
   }
   const total = clave + mix;
-  const proyectar = (ventas) => Math.round((ventas / corridos) * cicloDias);
-  const ritmoDiario = Math.round((total / corridos) * 10) / 10;
+  const restante = Math.max(0, cicloDias - corridos);
+  const ritmoCrudo = total / corridos;
+  const ultimos = [...porDia.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(-7);
+  const ritmo7Crudo = ultimos.length ? ultimos.reduce((suma, [, ventas]) => suma + ventas, 0) / ultimos.length : ritmoCrudo;
+  const proyectarParte = (ventas) => Math.round(ventas + (ventas / corridos) * restante);
+  const claveProyectada = proyectarParte(clave);
+  const mixProyectada = proyectarParte(mix);
+  const totalProyectado = claveProyectada + mixProyectada;
+  const reciente = Math.round(total + ritmo7Crudo * restante);
+  const conservador = Math.min(totalProyectado, reciente);
+  const optimista = Math.max(totalProyectado, reciente);
+  let tendencia = "igual";
+  if (ritmo7Crudo > ritmoCrudo + 0.05) tendencia = "sube";
+  else if (ritmo7Crudo + 0.05 < ritmoCrudo) tendencia = "baja";
   return {
     clave,
     mix,
     total,
     corridos,
     cicloDias,
-    ritmoDiario,
-    claveProyectada: proyectar(clave),
-    mixProyectada: proyectar(mix),
-    totalProyectado: proyectar(total),
+    restante,
+    ritmoDiario: unDecimal(ritmoCrudo),
+    ritmo7: unDecimal(ritmo7Crudo),
+    tendencia,
+    claveProyectada,
+    mixProyectada,
+    totalProyectado,
+    conservador,
+    optimista,
+    mismoCierre: conservador === optimista,
   };
 }
 

@@ -98,21 +98,59 @@ function formatoBs(valor) {
     .replace("BOB", "Bs");
 }
 
-function PronosticoFila({ etiqueta, ahora, proyectado, color, maximo }) {
-  const tope = maximo || proyectado || 1;
-  const anchoAhora = Math.min(100, Math.round((ahora / tope) * 100));
+function numero(valor) {
+  return new Intl.NumberFormat("es-BO").format(valor ?? 0);
+}
+
+function Pronostico({ pronostico, finTexto }) {
+  const base = pronostico.totalProyectado || pronostico.total || 1;
+  const vendidas = pronostico.total || 0;
+  const anchoHecho = Math.min(100, Math.round((vendidas / base) * 100));
+  const flecha = pronostico.tendencia === "sube" ? "▲" : pronostico.tendencia === "baja" ? "▼" : "igual";
+  const ritmo7 = pronostico.ritmo7 ?? pronostico.ritmoDiario;
   return (
-    <li className="pronostico-fila">
-      <span className="pronostico-etiqueta">
-        <i style={{ background: color }} />
-        {etiqueta}
-      </span>
-      <span className="pronostico-ahora">{ahora}</span>
-      <span className="pronostico-riel" aria-hidden="true">
-        <span className="pronostico-lleno" style={{ width: `${anchoAhora}%`, background: color }} />
-      </span>
-      <span className="pronostico-cierre">{proyectado}</span>
-    </li>
+    <article className="panel bloque">
+      <h2>Pronóstico al cierre · {finTexto}</h2>
+      <p className="sub explicacion">
+        {numero(vendidas)} ventas registradas · día {pronostico.corridos} de {pronostico.cicloDias} ·{" "}
+        {pronostico.ritmoDiario} unidades/día del ciclo · últimos 7 días {ritmo7} {flecha}
+      </p>
+      <div className="pronostico-pista" aria-hidden="true">
+        <span className="pronostico-hecho" style={{ width: `${anchoHecho}%` }} />
+      </div>
+      <div className="pronostico-leyenda">
+        <span>
+          <i className="hecho" />
+          Hasta hoy {numero(vendidas)}
+        </span>
+        <span>
+          <i className="falta" />
+          Al cierre base {numero(pronostico.totalProyectado)}
+        </span>
+      </div>
+      {pronostico.mismoCierre ? (
+        <p className="pronostico-unico">Cierre {numero(pronostico.totalProyectado)}</p>
+      ) : (
+        <div className="pronostico-cierres">
+          <div>
+            <span>Conservador</span>
+            <strong>{numero(pronostico.conservador)}</strong>
+          </div>
+          <div>
+            <span>Base</span>
+            <strong>{numero(pronostico.totalProyectado)}</strong>
+          </div>
+          <div>
+            <span>Optimista</span>
+            <strong>{numero(pronostico.optimista)}</strong>
+          </div>
+        </div>
+      )}
+      <p className="sub">
+        Clave {numero(pronostico.clave)} → {numero(pronostico.claveProyectada)} · MIX {numero(pronostico.mix)} →{" "}
+        {numero(pronostico.mixProyectada)}
+      </p>
+    </article>
   );
 }
 
@@ -359,6 +397,7 @@ export default function Ventas() {
               <p className="sub">Esa columna no está en el archivo.</p>
             </article>
           )}
+          {pronostico ? <Pronostico pronostico={pronostico} finTexto={datos.ciclo.finTexto} /> : null}
           <div className="numeros">
             <article>
               <span>Registros</span>
@@ -369,44 +408,6 @@ export default function Ventas() {
               <strong>{conteos.porEstado?.length || 0}</strong>
             </article>
           </div>
-          {pronostico ? (
-            <article className="panel bloque">
-              <h2>Pronóstico al cierre · {datos.ciclo.finTexto}</h2>
-              <p className="sub explicacion">
-                Día {pronostico.corridos} de {pronostico.cicloDias} · ritmo{" "}
-                {pronostico.ritmoDiario ??
-                  Math.round(((pronostico.total ?? pronostico.clave + pronostico.mix) / pronostico.corridos) * 10) / 10}{" "}
-                u/día. Proyección lineal del ritmo actual; si el ritmo cambia, cambia el número.
-              </p>
-              <div className="pronostico-cabeza">
-                <span>Ahora</span>
-                <span>Al cierre</span>
-              </div>
-              <ul className="pronostico-lista">
-                <PronosticoFila
-                  etiqueta="Clave"
-                  ahora={pronostico.clave}
-                  proyectado={pronostico.claveProyectada}
-                  color={COLOR_CLAVE}
-                  maximo={pronostico.totalProyectado || pronostico.claveProyectada + pronostico.mixProyectada}
-                />
-                <PronosticoFila
-                  etiqueta="MIX"
-                  ahora={pronostico.mix}
-                  proyectado={pronostico.mixProyectada}
-                  color={COLOR_MIX}
-                  maximo={pronostico.totalProyectado || pronostico.claveProyectada + pronostico.mixProyectada}
-                />
-                <PronosticoFila
-                  etiqueta="Total"
-                  ahora={pronostico.total ?? pronostico.clave + pronostico.mix}
-                  proyectado={pronostico.totalProyectado ?? pronostico.claveProyectada + pronostico.mixProyectada}
-                  color="#111111"
-                  maximo={pronostico.totalProyectado || pronostico.claveProyectada + pronostico.mixProyectada}
-                />
-              </ul>
-            </article>
-          ) : null}
           <div className="dos-conteos">
             <article className="panel">
               <h2>Ranking de modelos · {rango}</h2>
