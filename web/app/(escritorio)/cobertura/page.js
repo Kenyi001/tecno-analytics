@@ -140,12 +140,11 @@ export default function Cobertura() {
       {datos ? (
         <>
           <p className="sub explicacion">
-            Cuenta tiendas con al menos 1 unidad. “Si sigue así” proyecta con el ritmo de la última semana hasta el {datos.cierreTexto}.
+            Porcentaje de tiendas con al menos 1 unidad. Stock = unidades en tienda.
           </p>
           <div className="tres-conteos">
             {CORTES.map((corte) => {
               const todas = tarjeta(datos.grupos?.[corte.id]?.todas);
-              const top = tarjeta(datos.grupos?.[corte.id]?.top300);
               if (!todas) return null;
               const avance = Math.min(100, Math.max(0, todas.pct || 0));
               return (
@@ -157,28 +156,18 @@ export default function Cobertura() {
                   </div>
                   <div className="numeros">
                     <article>
-                      <span>Hoy</span>
-                      <strong style={{ color: corte.color }}>
-                        {todas.pct}%
-                      </strong>
+                      <span>Tiendas con stock</span>
+                      <strong style={{ color: corte.color }}>{todas.pct}%</strong>
                       <p className="sub">
                         {numero(todas.cubiertas)} de {numero(todas.total)} tiendas
                       </p>
                     </article>
                     <article>
-                      <span>Si sigue así</span>
-                      <strong>{numero(todas.cierre)}</strong>
-                      <p className="sub">
-                        +{numero(todas.nuevas7)} tiendas en 7 días
-                      </p>
+                      <span>Stock</span>
+                      <strong>{numero(todas.cantidad)}</strong>
+                      <p className="sub">unidades en tienda</p>
                     </article>
                   </div>
-                  {top ? (
-                    <p className="sub cobertura-linea">
-                      Top 300: {top.pct}% hoy · {numero(top.cierre)} si sigue así
-                    </p>
-                  ) : null}
-                  <p className="sub cobertura-linea">Stock en tiendas: {numero(todas.cantidad)} unidades</p>
                 </article>
               );
             })}
