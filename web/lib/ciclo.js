@@ -83,3 +83,18 @@ export function rutaDelDia(dia) {
     json: `${ciclo.carpeta}/${dia}.json`,
   };
 }
+
+/** Ciclo 21→20 inmediatamente anterior al ciclo dado (por su fecha de inicio). */
+export function cicloAnteriorDe(ciclo) {
+  const [year, month] = String(ciclo?.inicio || "")
+    .split("-")
+    .map(Number);
+  if (!year || !month) return null;
+  let y = year;
+  let m = month - 1;
+  if (m < 1) {
+    m = 12;
+    y -= 1;
+  }
+  return cicloDe(instanteEnBolivia(iso(y, m, 21)));
+}

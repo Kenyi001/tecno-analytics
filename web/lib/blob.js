@@ -1,8 +1,15 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { get, list, put } from "@vercel/blob";
-import { cicloDe, fechaCorta, fechaHoraBolivia } from "./ciclo";
+import { cicloAnteriorDe, cicloDe, fechaCorta, fechaHoraBolivia } from "./ciclo";
 import { leerHoja } from "./libro";
+import {
+  deltaParticipacionPp,
+  participacion,
+  proyectarVentas,
+  sumarDias,
+  topConOtros,
+} from "./proyeccion";
 
 export const RUTA_COBERTURA = "cobertura/actual.json";
 export const RUTA_LIBRO_COBERTURA = "cobertura/actual.xlsx";
@@ -180,88 +187,45 @@ function topFijos(columnas, filas, roster) {
   return { lista: orden.filter((persona) => persona.ventas > 0).slice(0, 10), total };
 }
 
-function diasEntre(inicio, fin) {
-  const desde = new Date(`${inicio}T12:00:00Z`).getTime();
-  const hasta = new Date(`${fin}T12:00:00Z`).getTime();
-  if (!Number.isFinite(desde) || !Number.isFinite(hasta) || hasta < desde) return 0;
-  return Math.round((hasta - desde) / 86400000) + 1;
-}
-
-function isoDeSerial(serial) {
-  const ms = Date.UTC(1899, 11, 30) + Math.round(serial) * 86400000;
-  const fecha = new Date(ms);
-  if (Number.isNaN(fecha.getTime())) return "";
-  const mes = String(fecha.getUTCMonth() + 1).padStart(2, "0");
-  const dia = String(fecha.getUTCDate()).padStart(2, "0");
-  return `${fecha.getUTCFullYear()}-${mes}-${dia}`;
-}
-
-function isoDeCelda(valor) {
-  if (valor == null || valor === "") return "";
-  if (typeof valor === "number" && valor > 20000 && valor < 80000) return isoDeSerial(valor);
-  const texto = String(valor).trim();
-  const iso = texto.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
-  const dmy = texto.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})/);
-  if (dmy) return `${dmy[3]}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}`;
-  const n = Number(texto);
-  if (Number.isFinite(n) && n > 20000 && n < 80000) return isoDeSerial(n);
-  return "";
-}
-
-function unDecimal(valor) {
-  return Math.round(valor * 10) / 10;
-}
-
-function pronosticoVentas(columnas, filas, ciclo) {
-  const iMod = columnas.indexOf("Model");
-  if (iMod < 0 || !ciclo?.inicio || !ciclo?.hasta || !ciclo?.finEtiqueta) return null;
-  const corridos = diasEntre(ciclo.inicio, ciclo.hasta);
-  const cicloDias = diasEntre(ciclo.inicio, ciclo.finEtiqueta);
-  if (corridos < 1 || cicloDias < 1) return null;
-  const iFecha = columnas.indexOf("Sales Date");
-  const porDia = new Map();
-  let clave = 0;
-  let mix = 0;
-  for (const fila of filas) {
-    if (grupoModelo(fila?.[iMod]) === "Clave") clave += 1;
-    else mix += 1;
-    const dia = iFecha >= 0 ? isoDeCelda(fila?.[iFecha]) : "";
-    if (!dia) continue;
-    porDia.set(dia, (porDia.get(dia) || 0) + 1);
+async function cierreCicloAnterior(ciclo) {
+  const anterior = cicloAnteriorDe(ciclo);
+  if (!anterior) return null;
+  try {
+    const blobs = await listar(`${anterior.carpeta}/`);
+    const jsons = blobs
+      .filter((blob) => blob.pathname.endsWith(".json"))
+      .sort((a, b) => b.pathname.localeCompare(a.pathname));
+    if (!jsons[0]) return null;
+    const bytes = await bajar(jsons[0].pathname);
+    if (!bytes) return null;
+    const completo = JSON.parse(bytes.toString("utf8"));
+    const dia = jsons[0].pathname.split("/").pop().replace(/\.json$/, "");
+    const total = completo.conteos?.registros ?? (completo.filas || []).length;
+    const porModelo = completo.conteos?.porModelo || contarColumna(completo.columnas, completo.filas, "Model");
+    const porEstado = completo.conteos?.porEstado || contarColumna(completo.columnas, completo.filas, "State");
+    const proyeccionAnt = proyectarVentas({
+      columnas: completo.columnas,
+      filas: completo.filas,
+      ciclo: { inicio: anterior.inicio, finEtiqueta: anterior.finEtiqueta, hasta: dia },
+      hoyLaPaz: sumarDias(anterior.finEtiqueta, 1),
+    });
+    const diasDistintos = (proyeccionAnt?.porDia || []).filter((d) => d.ventas > 0).length;
+    return {
+      total,
+      dia,
+      diaTexto: fechaCorta(dia),
+      inicioTexto: fechaCorta(anterior.inicio),
+      finTexto: fechaCorta(anterior.finEtiqueta),
+      carpeta: anterior.carpeta,
+      porModelo: participacion(porModelo || []),
+      porEstado: participacion(porEstado || []),
+      porDia: proyeccionAnt?.porDia || [],
+      tieneSerieDiaria: diasDistintos >= 7,
+      diasDistintos,
+    };
+  } catch {
+    return null;
   }
-  const total = clave + mix;
-  const restante = Math.max(0, cicloDias - corridos);
-  const ritmoCrudo = total / corridos;
-  const ultimos = [...porDia.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(-7);
-  const ritmo7Crudo = ultimos.length ? ultimos.reduce((suma, [, ventas]) => suma + ventas, 0) / ultimos.length : ritmoCrudo;
-  const proyectarParte = (ventas) => Math.round(ventas + (ventas / corridos) * restante);
-  const claveProyectada = proyectarParte(clave);
-  const mixProyectada = proyectarParte(mix);
-  const totalProyectado = claveProyectada + mixProyectada;
-  const reciente = Math.round(total + ritmo7Crudo * restante);
-  const conservador = Math.min(totalProyectado, reciente);
-  const optimista = Math.max(totalProyectado, reciente);
-  let tendencia = "igual";
-  if (ritmo7Crudo > ritmoCrudo + 0.05) tendencia = "sube";
-  else if (ritmo7Crudo + 0.05 < ritmoCrudo) tendencia = "baja";
-  return {
-    clave,
-    mix,
-    total,
-    corridos,
-    cicloDias,
-    restante,
-    ritmoDiario: unDecimal(ritmoCrudo),
-    ritmo7: unDecimal(ritmo7Crudo),
-    tendencia,
-    claveProyectada,
-    mixProyectada,
-    totalProyectado,
-    conservador,
-    optimista,
-    mismoCierre: conservador === optimista,
-  };
 }
 
 function token() {
@@ -306,6 +270,7 @@ export async function resumenVentas() {
   const jsons = blobs
     .filter((blob) => blob.pathname.endsWith(".json"))
     .sort((a, b) => b.pathname.localeCompare(a.pathname));
+  const referenciaAnterior = await cierreCicloAnterior(ciclo);
   let vista = null;
   if (jsons[0]) {
     const bytes = await bajar(jsons[0].pathname);
@@ -329,6 +294,57 @@ export async function resumenVentas() {
           porFijos = null;
         }
       }
+      const proyeccion = proyectarVentas({
+        columnas: completo.columnas,
+        filas: completo.filas,
+        ciclo: { inicio: ciclo.inicio, hasta: dia, finEtiqueta: ciclo.finEtiqueta },
+        hoyLaPaz: ciclo.fechaHoy,
+      });
+      const porModelo = contarColumna(completo.columnas, completo.filas, "Model") || completo.conteos?.porModelo || [];
+      const porEstado = completo.conteos?.porEstado || contarColumna(completo.columnas, completo.filas, "State") || [];
+      const porCruce = cruzarColumnas(completo.columnas, completo.filas);
+      const modelosPct = participacion(porModelo);
+      const deptosPct = participacion(porEstado);
+      const modelosConDelta = referenciaAnterior?.porModelo?.length
+        ? deltaParticipacionPp(modelosPct, referenciaAnterior.porModelo)
+        : modelosPct.map((item) => ({ ...item, deltaPp: null, tendencia: "igual" }));
+      const deptosConDelta = referenciaAnterior?.porEstado?.length
+        ? deltaParticipacionPp(deptosPct, referenciaAnterior.porEstado)
+        : deptosPct.map((item) => ({ ...item, deltaPp: null, tendencia: "igual" }));
+      const modelosTop = topConOtros(modelosConDelta, 5);
+      const fijosTop5 = (porFijos || []).slice(0, 5);
+      const fijosResto = Math.max(0, (porFijos || []).length - 5);
+
+      let insightQuien = null;
+      if (porCruce) {
+        const tecno = porCruce.find((g) => g.nombre === "TECNO");
+        const mercado = porCruce.find((g) => g.nombre === "Mercado");
+        const volTecno = (tecno?.partes || []).reduce((s, p) => s + p.ventas, 0);
+        const volMercado = (mercado?.partes || []).reduce((s, p) => s + p.ventas, 0);
+        const volTotal = volTecno + volMercado;
+        const claveTecno = tecno?.partes?.find((p) => p.nombre === "Clave")?.ventas || 0;
+        const claveTotal = (proyeccion?.clave || 0);
+        if (volTotal > 0 && claveTotal > 0) {
+          insightQuien = {
+            pctVolumenTecno: Math.round((volTecno / volTotal) * 100),
+            pctClaveTecno: Math.round((claveTecno / claveTotal) * 100),
+          };
+        }
+      }
+
+      let vsAnterior = null;
+      if (referenciaAnterior?.total && proyeccion?.totalProyectado) {
+        const delta = proyeccion.totalProyectado - referenciaAnterior.total;
+        const pct = Math.round((delta / referenciaAnterior.total) * 1000) / 10;
+        vsAnterior = {
+          cierreAnterior: referenciaAnterior.total,
+          cierreTexto: referenciaAnterior.finTexto,
+          delta,
+          pct,
+          semaforo: pct > 1 ? "arriba" : pct < -1 ? "abajo" : "igual",
+        };
+      }
+
       vista = {
         generado: completo.generado,
         dia,
@@ -337,17 +353,24 @@ export async function resumenVentas() {
         calculadoTexto: diferencia > 3 * 60 * 1000 ? fechaHoraBolivia(excel.subido) : "",
         conteos: {
           ...completo.conteos,
-          porModelo: contarColumna(completo.columnas, completo.filas, "Model") || completo.conteos?.porModelo,
+          registros: completo.conteos?.registros ?? completo.filas?.length ?? 0,
+          porModelo: modelosConDelta,
+          porModeloTop: modelosTop.visibles,
+          porModeloOcultos: modelosTop.ocultos,
+          porEstado: deptosConDelta,
           porArea: cortarColumna(completo.columnas, completo.filas, "Position", grupoPosicion, ["TECNO", "Mercado"]),
           porClave: cortarColumna(completo.columnas, completo.filas, "Model", grupoModelo, ["Clave", "MIX"]),
-          porCruce: cruzarColumnas(completo.columnas, completo.filas),
+          porCruce,
           porFijos,
+          porFijosTop: fijosTop5,
+          porFijosOcultos: fijosResto,
           ventasFijos,
-          pronostico: pronosticoVentas(completo.columnas, completo.filas, {
-            inicio: ciclo.inicio,
-            hasta: dia,
-            finEtiqueta: ciclo.finEtiqueta,
-          }),
+          proyeccion,
+          // Alias legacy para no romper lecturas viejas.
+          pronostico: proyeccion,
+          insightQuien,
+          vsAnterior,
+          pctClave: proyeccion?.total ? Math.round((proyeccion.clave / proyeccion.total) * 1000) / 10 : 0,
         },
       };
     }
@@ -365,6 +388,17 @@ export async function resumenVentas() {
     },
     archivos,
     vista,
+    referenciaAnterior: referenciaAnterior
+      ? {
+          total: referenciaAnterior.total,
+          diaTexto: referenciaAnterior.diaTexto,
+          inicioTexto: referenciaAnterior.inicioTexto,
+          finTexto: referenciaAnterior.finTexto,
+          tieneSerieDiaria: referenciaAnterior.tieneSerieDiaria,
+          diasDistintos: referenciaAnterior.diasDistintos,
+          porDia: referenciaAnterior.tieneSerieDiaria ? referenciaAnterior.porDia : [],
+        }
+      : null,
     hoy: hoy ? { subido: hoy.uploadedAt } : null,
   };
 }
