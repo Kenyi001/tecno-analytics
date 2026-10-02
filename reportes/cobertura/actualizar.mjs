@@ -51,7 +51,7 @@ const rutaStock = path.join(carpeta, "stock.xlsx");
 fs.writeFileSync(rutaStock, stock);
 console.log(`stock ${stock.length} bytes`);
 
-const pegado = await pegarDatos(libro, stock);
+const pegado = await pegarDatos(libro, rutaStock);
 console.log(`Datos ${pegado.filas} filas, fórmulas hasta ${pegado.fin}`);
 
 const numeros = spawnSync(process.execPath, ["reportes/cobertura/numeros.mjs"], {

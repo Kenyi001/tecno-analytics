@@ -2,6 +2,9 @@
 // No abre el libro en Excel y no borra las otras hojas.
 
 import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
 import JSZip from "jszip";
 
 function decode(texto) {
@@ -95,19 +98,63 @@ function celda(letra, fila, valorCelda) {
   return `<c r="${letra}${fila}" t="inlineStr"><is><t>${xml(texto)}</t></is></c>`;
 }
 
-export async function pegarDatos(rutaLibro, exportBuffer) {
-  const exportado = await JSZip.loadAsync(exportBuffer);
-  for (const nombre of Object.keys(exportado.files)) {
-    if (exportado.files[nombre].dir) delete exportado.files[nombre];
+function tieneUnzip() {
+  const prueba = spawnSync("unzip", ["-v"], { encoding: "utf8" });
+  return prueba.status === 0;
+}
+
+function leerEntradaZip(rutaZip, entrada) {
+  const salida = spawnSync("unzip", ["-p", rutaZip, entrada], {
+    encoding: "buffer",
+    maxBuffer: 700 * 1024 * 1024,
+  });
+  if (salida.status !== 0) {
+    throw new Error(`No se pudo leer ${entrada} del Excel de stock`);
   }
-  const libroExport = await exportado.file("xl/workbook.xml").async("string");
-  const relsExport = await exportado.file("xl/_rels/workbook.xml.rels").async("string");
-  const hojaExport = primeraHoja(libroExport, relsExport);
-  const cadenasExport = exportado.file("xl/sharedStrings.xml")
-    ? textos(await exportado.file("xl/sharedStrings.xml").async("string"))
-    : [];
-  const filas = filasDe(await exportado.file(hojaExport).async("string"), cadenasExport);
-  for (const nombre of Object.keys(exportado.files)) delete exportado.files[nombre];
+  return salida.stdout.toString("utf8");
+}
+
+async function filasDesdeExport(exportOrigen) {
+  let ruta = null;
+  let borrar = false;
+  if (Buffer.isBuffer(exportOrigen)) {
+    ruta = path.join(os.tmpdir(), `stock-export-${process.pid}.xlsx`);
+    fs.writeFileSync(ruta, exportOrigen);
+    borrar = true;
+  } else {
+    ruta = String(exportOrigen);
+  }
+  try {
+    if (tieneUnzip()) {
+      const libroExport = leerEntradaZip(ruta, "xl/workbook.xml");
+      const relsExport = leerEntradaZip(ruta, "xl/_rels/workbook.xml.rels");
+      const hojaExport = primeraHoja(libroExport, relsExport);
+      let cadenasExport = [];
+      try {
+        cadenasExport = textos(leerEntradaZip(ruta, "xl/sharedStrings.xml"));
+      } catch {
+        cadenasExport = [];
+      }
+      return filasDe(leerEntradaZip(ruta, hojaExport), cadenasExport);
+    }
+    const exportado = await JSZip.loadAsync(fs.readFileSync(ruta));
+    for (const nombre of Object.keys(exportado.files)) {
+      if (exportado.files[nombre].dir) delete exportado.files[nombre];
+    }
+    const libroExport = await exportado.file("xl/workbook.xml").async("string");
+    const relsExport = await exportado.file("xl/_rels/workbook.xml.rels").async("string");
+    const hojaExport = primeraHoja(libroExport, relsExport);
+    const cadenasExport = exportado.file("xl/sharedStrings.xml")
+      ? textos(await exportado.file("xl/sharedStrings.xml").async("string"))
+      : [];
+    return filasDe(await exportado.file(hojaExport).async("string"), cadenasExport);
+  } finally {
+    if (borrar && fs.existsSync(ruta)) fs.unlinkSync(ruta);
+  }
+}
+
+export async function pegarDatos(rutaLibro, exportOrigen) {
+  const filas = await filasDesdeExport(exportOrigen);
 
   const cobertura = await JSZip.loadAsync(fs.readFileSync(rutaLibro));
   for (const nombre of Object.keys(cobertura.files)) {
