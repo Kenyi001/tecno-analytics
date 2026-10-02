@@ -45,9 +45,10 @@ console.log(`libro ${actual.length} bytes`);
 const tokens = await entrarDcr(usuario, clave);
 console.log("sesión lista");
 
-// Solo LK7 y LK7K: alcanza para las tarjetas y evita el Excel completo (~200 MB).
-const stock = await bajarExcelStock(tokens, usuario, ["LK7", "LK7K"]);
+// Sin filtro de modelo: es la base que reemplaza Datos (igual que en DCR).
+const stock = await bajarExcelStock(tokens, usuario, []);
 fs.writeFileSync(path.join(carpeta, "stock.xlsx"), stock);
+stock.fill?.(0); // no-op si Buffer; libera referencia abajo
 console.log(`stock ${stock.length} bytes`);
 
 const pegado = await pegarDatos(libro, stock);
