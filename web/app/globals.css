@@ -281,7 +281,90 @@ h2 { margin: 0 0 12px; font-size: 14px; font-weight: 650; }
   border-radius: 6px;
 }
 .consulta-forma input:focus { outline: 2px solid #009bde; border-color: #009bde; }
-.consulta-resultado { display: grid; gap: 8px; }
+.consulta-resultado { display: grid; gap: 12px; }
+.consulta-ok {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 13px;
+  font-weight: 650;
+}
+.consulta-banner {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #003366;
+  color: white;
+}
+.consulta-banner strong { display: block; font-size: 15px; font-weight: 700; }
+.consulta-banner span { display: block; margin-top: 4px; font-size: 13px; opacity: 0.9; }
+.consulta-ficha {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+}
+.consulta-ficha div { display: grid; gap: 2px; }
+.consulta-ficha dt {
+  margin: 0;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.consulta-ficha dd { margin: 0; color: #111111; font-size: 14px; }
+.consulta-corte {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f4f5f6;
+  color: #374151;
+  font-variant-numeric: tabular-nums;
+}
+.consulta-corte i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 99px;
+}
+.consulta-corte .corte-total { margin-left: auto; font-weight: 650; }
+.consulta-estado.activado { color: #047857; font-weight: 650; }
+.consulta-estado.no-activado { color: #b91c1c; font-weight: 650; }
+.consulta-comision {
+  margin: 0;
+  padding: 14px;
+  border-radius: 8px;
+  background: #eef7fc;
+  border: 1px solid #cfe8f6;
+}
+.consulta-comision span {
+  display: block;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.consulta-comision strong {
+  display: block;
+  margin-top: 4px;
+  color: #003366;
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.consulta-comision .sub { margin-top: 6px; }
 .zoom-hoja { display: inline-flex; align-items: center; gap: 4px; }
 .zoom-hoja .chip { min-width: 34px; justify-content: center; }
 .chip.accion { background: #111111; color: white; border-color: #111111; }

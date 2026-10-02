@@ -74,6 +74,35 @@ function claveNombre(texto) {
     .toLowerCase();
 }
 
+function indiceEncabezado(encabezado, predicado) {
+  return encabezado.findIndex((nombre) => predicado(String(nombre || "").replace(/\s+/g, " ").trim()));
+}
+
+function numeroCelda(valor) {
+  if (valor == null || valor === "") return null;
+  if (typeof valor === "number" && Number.isFinite(valor)) return valor;
+  let texto = String(valor).replace(/\s+/g, "").replace(/Bs\.?/gi, "");
+  if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(texto) || (texto.includes(",") && texto.includes("."))) {
+    texto = texto.replace(/\./g, "").replace(",", ".");
+  } else if (texto.includes(",")) {
+    texto = texto.replace(",", ".");
+  }
+  const n = Number(texto);
+  return Number.isFinite(n) ? n : null;
+}
+
+function semanaIso(isoFecha) {
+  const [y, m, d] = String(isoFecha || "")
+    .split("-")
+    .map(Number);
+  if (!y || !m || !d) return null;
+  const fecha = new Date(Date.UTC(y, m - 1, d));
+  const dia = fecha.getUTCDay() || 7;
+  fecha.setUTCDate(fecha.getUTCDate() + 4 - dia);
+  const inicio = new Date(Date.UTC(fecha.getUTCFullYear(), 0, 1));
+  return Math.ceil(((fecha - inicio) / 86400000 + 1) / 7);
+}
+
 function rosterFijos(hoja) {
   const filas = hoja?.filas || [];
   const cabecera = filas.findIndex(
@@ -84,6 +113,10 @@ function rosterFijos(hoja) {
   const iNom = encabezado.indexOf("Nombre Completo");
   const iTl = encabezado.indexOf("Team Leader");
   const iCod = encabezado.indexOf("Codigo DCR");
+  const iCom = indiceEncabezado(encabezado, (nombre) => {
+    const clave = claveNombre(nombre);
+    return clave.includes("comision") && (clave.includes("bs") || clave.includes("boliv"));
+  });
   const gente = [];
   const vistos = new Set();
   for (const datos of filas.slice(cabecera + 1)) {
@@ -93,7 +126,12 @@ function rosterFijos(hoja) {
     const clave = claveNombre(nombre);
     if (!nombre || !lider || !codigo || !clave || vistos.has(clave)) continue;
     vistos.add(clave);
-    gente.push({ nombre, clave, codigo });
+    gente.push({
+      nombre,
+      clave,
+      codigo,
+      comisionBs: iCom >= 0 ? numeroCelda(datos?.[iCom]) : null,
+    });
   }
   return gente;
 }
@@ -284,15 +322,21 @@ export async function consultarCodigo(codigo) {
       roster = [];
     }
   }
-  const persona = roster.find((item) => String(item.codigo || "").replace(/\s+/g, "").toUpperCase() === buscado);
+  let persona = roster.find((item) => String(item.codigo || "").replace(/\s+/g, "").toUpperCase() === buscado);
   const iUp = indiceColumna(columnas, ["Uploader"]);
   const iId = indiceColumna(columnas, ["Uploader ID"]);
-  const clave = persona?.clave || "";
-  const propias = filas.filter((fila) => {
+  let propias = filas.filter((fila) => {
     const id = iId >= 0 ? String(fila?.[iId] || "").replace(/\s+/g, "").trim().toUpperCase() : "";
     if (id && id === buscado) return true;
-    return Boolean(clave && iUp >= 0 && claveNombre(fila?.[iUp]) === clave);
+    return Boolean(persona?.clave && iUp >= 0 && claveNombre(fila?.[iUp]) === persona.clave);
   });
+  if (!persona && propias.length && iUp >= 0) {
+    const claveVenta = claveNombre(propias[0]?.[iUp]);
+    persona = roster.find((item) => item.clave === claveVenta) || null;
+  }
+  if (persona && !propias.length) {
+    propias = filas.filter((fila) => iUp >= 0 && claveNombre(fila?.[iUp]) === persona.clave);
+  }
   if (!persona && !propias.length) return { encontrado: false };
   const iMod = indiceColumna(columnas, ["Model"]);
   const iAct = indiceColumna(columnas, ["Activation Date"]);
@@ -311,10 +355,13 @@ export async function consultarCodigo(codigo) {
     else ventasMix += 1;
   }
   const dia = jsons[0].pathname.split("/").pop().replace(/\.json$/, "");
+  const uploaderId = unicos(propias.map((fila) => (iId >= 0 ? fila?.[iId] : ""))).find((id) => /^BOV/i.test(id)) || (buscado.startsWith("BOV") ? buscado : "");
   return {
     encontrado: true,
     nombre: persona?.nombre || (iUp >= 0 ? String(propias[0]?.[iUp] || "").replace(/\s+/g, " ").trim() : ""),
     codigo: persona?.codigo || buscado,
+    uploaderId,
+    semana: semanaIso(dia),
     rango: `${fechaCorta(ciclo.inicio)} – ${fechaCorta(dia)}`,
     ciudades: unicos(propias.map((fila) => (iCiudad >= 0 ? fila?.[iCiudad] : ""))),
     tiendas: unicos(propias.map((fila) => (iShop >= 0 ? fila?.[iShop] : ""))),
@@ -328,6 +375,7 @@ export async function consultarCodigo(codigo) {
     clave: ventasClave,
     mix: ventasMix,
     total: propias.length,
+    comisionBs: persona?.comisionBs ?? null,
   };
 }
 

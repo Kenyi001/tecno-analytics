@@ -414,16 +414,43 @@ export default function Ventas() {
             {consulta && !consulta.encontrado ? <p className="sub">Ese código no está en el reporte.</p> : null}
             {consulta?.encontrado ? (
               <div className="consulta-resultado">
-                <p>
-                  <strong>{consulta.nombre || "Sin nombre"}</strong>
-                  <span className="sub"> {consulta.codigo} · {consulta.rango}</span>
-                </p>
-                <p className="sub">
-                  {consulta.ciudades.length ? consulta.ciudades.join(", ") : "Sin ciudad"}
-                  {consulta.tiendas.length ? ` · ${consulta.tiendas.join(", ")}` : ""}
-                </p>
-                {consulta.nombresTienda.length ? <p className="sub">{consulta.nombresTienda.join(", ")}</p> : null}
-                <div className="corte-leyenda">
+                <p className="consulta-ok">Información encontrada</p>
+                <div className="consulta-banner">
+                  <strong>
+                    Comisión del ciclo
+                    {consulta.semana ? ` · semana ${consulta.semana}` : ""}
+                  </strong>
+                  <span>{consulta.rango}</span>
+                </div>
+                <dl className="consulta-ficha">
+                  <div>
+                    <dt>Nombre</dt>
+                    <dd>{consulta.nombre || "Sin nombre"}</dd>
+                  </div>
+                  <div>
+                    <dt>Código</dt>
+                    <dd>{consulta.codigo}</dd>
+                  </div>
+                  {consulta.uploaderId ? (
+                    <div>
+                      <dt>Uploader ID</dt>
+                      <dd>{consulta.uploaderId}</dd>
+                    </div>
+                  ) : null}
+                  <div>
+                    <dt>Tienda</dt>
+                    <dd>{consulta.nombresTienda.length ? consulta.nombresTienda.join(", ") : "Sin tienda"}</dd>
+                  </div>
+                  <div>
+                    <dt>Shop ID</dt>
+                    <dd>{consulta.tiendas.length ? consulta.tiendas.join(", ") : "Sin Shop ID"}</dd>
+                  </div>
+                  <div>
+                    <dt>Ciudad</dt>
+                    <dd>{consulta.ciudades.length ? consulta.ciudades.join(", ") : "Sin ciudad"}</dd>
+                  </div>
+                </dl>
+                <div className="consulta-corte">
                   <span>
                     <i style={{ background: COLOR_CLAVE }} />
                     Clave {consulta.clave}
@@ -435,27 +462,58 @@ export default function Ventas() {
                   <strong className="corte-total">Total {consulta.total}</strong>
                 </div>
                 {consulta.modelos.length ? (
-                  <table className="lista">
-                    <thead>
-                      <tr>
-                        <th>Modelo</th>
-                        <th>Estado</th>
-                        <th className="derecha">Ventas</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {consulta.modelos.map((fila) => (
-                        <tr key={`${fila.modelo}-${fila.estado}`}>
-                          <td>{fila.modelo}</td>
-                          <td>{fila.estado}</td>
-                          <td className="derecha">{fila.ventas}</td>
+                  <>
+                    <table className="lista">
+                      <thead>
+                        <tr>
+                          <th>Modelo</th>
+                          <th>Estado</th>
+                          <th className="derecha">Ventas</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {consulta.modelos.map((fila) => (
+                          <tr key={`${fila.modelo}-${fila.estado}`}>
+                            <td>{fila.modelo}</td>
+                            <td>
+                              <span className={fila.estado === "Activado" ? "consulta-estado activado" : "consulta-estado no-activado"}>
+                                {fila.estado}
+                              </span>
+                            </td>
+                            <td className="derecha">{fila.ventas}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <p className="sub">
+                      {consulta.modelos.length} registro{consulta.modelos.length === 1 ? "" : "s"}
+                    </p>
+                  </>
                 ) : (
                   <p className="sub">Ese código está en Fijos y no tiene ventas en este reporte.</p>
                 )}
+                <div className="consulta-comision">
+                  <span>Comisión total generada</span>
+                  {consulta.comisionBs == null ? (
+                    <>
+                      <strong>—</strong>
+                      <p className="sub">Sin comisión en Fijos para este código.</p>
+                    </>
+                  ) : (
+                    <>
+                      <strong>
+                        {new Intl.NumberFormat("es-BO", {
+                          style: "currency",
+                          currency: "BOB",
+                          minimumFractionDigits: 2,
+                        })
+                          .format(consulta.comisionBs)
+                          .replace("BOB", "Bs")}
+                      </strong>
+                      <p className="sub">Sale de Fijos del ciclo, no de una tabla semanal de marketing.</p>
+                    </>
+                  )}
+                </div>
               </div>
             ) : null}
           </div>
