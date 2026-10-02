@@ -78,13 +78,15 @@ function indiceEncabezado(encabezado, predicado) {
   return encabezado.findIndex((nombre) => predicado(String(nombre || "").replace(/\s+/g, " ").trim()));
 }
 
-function numeroCelda(valor) {
+function numeroDinero(valor) {
   if (valor == null || valor === "") return null;
   if (typeof valor === "number" && Number.isFinite(valor)) return valor;
-  let texto = String(valor).replace(/\s+/g, "").replace(/Bs\.?/gi, "");
-  if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(texto) || (texto.includes(",") && texto.includes("."))) {
+  let texto = String(valor).replace(/\s+/g, "").replace(/Bs\.?/gi, "").replace(/\$/g, "");
+  if (/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(texto)) {
+    texto = texto.replace(/,/g, "");
+  } else if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(texto)) {
     texto = texto.replace(/\./g, "").replace(",", ".");
-  } else if (texto.includes(",")) {
+  } else if (texto.includes(",") && !texto.includes(".")) {
     texto = texto.replace(",", ".");
   }
   const n = Number(texto);
@@ -113,10 +115,25 @@ function rosterFijos(hoja) {
   const iNom = encabezado.indexOf("Nombre Completo");
   const iTl = encabezado.indexOf("Team Leader");
   const iCod = encabezado.indexOf("Codigo DCR");
-  const iCom = indiceEncabezado(encabezado, (nombre) => {
-    const clave = claveNombre(nombre);
-    return clave.includes("comision") && (clave.includes("bs") || clave.includes("boliv"));
-  });
+  const iCom = indiceEncabezado(encabezado, (nombre) => claveNombre(nombre) === "comision bs.");
+  const iComAlt =
+    iCom >= 0
+      ? iCom
+      : indiceEncabezado(encabezado, (nombre) => {
+          const clave = claveNombre(nombre);
+          return clave.includes("comision") && clave.includes("bs");
+        });
+  const iProfit = indiceEncabezado(encabezado, (nombre) => claveNombre(nombre) === "profit");
+  let tipoCambio = null;
+  for (const fila of filas.slice(0, cabecera)) {
+    const pos = (fila || []).findIndex((celda) => /bs\s*por\s*d[oó]lar/i.test(String(celda || "")));
+    if (pos >= 0) {
+      tipoCambio = numeroDinero(fila[pos + 1] ?? fila[pos]);
+      if (tipoCambio == null && pos > 0) tipoCambio = numeroDinero(fila[pos - 1]);
+      break;
+    }
+  }
+  if (tipoCambio == null) tipoCambio = 8;
   const gente = [];
   const vistos = new Set();
   for (const datos of filas.slice(cabecera + 1)) {
@@ -126,11 +143,21 @@ function rosterFijos(hoja) {
     const clave = claveNombre(nombre);
     if (!nombre || !lider || !codigo || !clave || vistos.has(clave)) continue;
     vistos.add(clave);
+    const comisionCelda = iComAlt >= 0 ? numeroDinero(datos?.[iComAlt]) : null;
+    const profitUsd = iProfit >= 0 ? numeroDinero(datos?.[iProfit]) : null;
+    let comisionBs = comisionCelda;
+    let comisionFuente = "comision";
+    if ((comisionBs == null || comisionBs === 0) && profitUsd != null && profitUsd !== 0) {
+      comisionBs = Math.round(profitUsd * tipoCambio * 100) / 100;
+      comisionFuente = "profit";
+    }
     gente.push({
       nombre,
       clave,
       codigo,
-      comisionBs: iCom >= 0 ? numeroCelda(datos?.[iCom]) : null,
+      comisionBs,
+      comisionFuente,
+      tipoCambio,
     });
   }
   return gente;
@@ -376,6 +403,8 @@ export async function consultarCodigo(codigo) {
     mix: ventasMix,
     total: propias.length,
     comisionBs: persona?.comisionBs ?? null,
+    comisionFuente: persona?.comisionFuente || null,
+    tipoCambio: persona?.tipoCambio ?? null,
   };
 }
 

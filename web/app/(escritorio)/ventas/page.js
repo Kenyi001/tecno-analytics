@@ -510,7 +510,11 @@ export default function Ventas() {
                           .format(consulta.comisionBs)
                           .replace("BOB", "Bs")}
                       </strong>
-                      <p className="sub">Sale de Fijos del ciclo, no de una tabla semanal de marketing.</p>
+                      <p className="sub">
+                        {consulta.comisionFuente === "profit"
+                          ? `Desde el PROFIT de Fijos, con ${consulta.tipoCambio ?? 8} Bs por dólar del libro.`
+                          : "Sale de Comision Bs. de Fijos del ciclo."}
+                      </p>
                     </>
                   )}
                 </div>
