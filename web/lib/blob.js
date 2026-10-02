@@ -5,6 +5,7 @@ import { cicloDe, fechaCorta, fechaHoraBolivia } from "./ciclo";
 import { leerHoja } from "./libro";
 
 export const RUTA_COBERTURA = "cobertura/actual.json";
+export const RUTA_LIBRO_COBERTURA = "cobertura/actual.xlsx";
 
 function coberturaBase() {
   return JSON.parse(readFileSync(join(process.cwd(), "data", "cobertura.json"), "utf8"));
@@ -458,11 +459,12 @@ export async function consultarCodigo(codigo) {
   };
 }
 
-function vistaCobertura(completo, origen) {
+function vistaCobertura(completo, origen, tieneLibro) {
   const referencia = completo.referencia || "";
   return {
     generado: completo.generado,
     origen,
+    tieneLibro: Boolean(tieneLibro),
     referencia,
     referenciaTexto: referencia ? fechaCorta(referencia) : "",
     cierre: completo.cierre || "",
@@ -476,14 +478,41 @@ function vistaCobertura(completo, origen) {
   };
 }
 
+async function hayLibroCobertura() {
+  const blobs = await listar("cobertura/");
+  return blobs.some((blob) => blob.pathname === RUTA_LIBRO_COBERTURA);
+}
+
 export async function resumenCobertura() {
+  let tieneLibro = false;
+  try {
+    tieneLibro = await hayLibroCobertura();
+  } catch {
+    tieneLibro = false;
+  }
   try {
     const bytes = await bajar(RUTA_COBERTURA);
-    if (bytes) return vistaCobertura(JSON.parse(bytes.toString("utf8")), "blob");
+    if (bytes) return vistaCobertura(JSON.parse(bytes.toString("utf8")), "blob", tieneLibro);
   } catch {
     // Si no hay Blob, se usa el cálculo guardado en el repo.
   }
-  return vistaCobertura(coberturaBase(), "base");
+  return vistaCobertura(coberturaBase(), "base", tieneLibro);
+}
+
+export async function libroCobertura() {
+  return bajar(RUTA_LIBRO_COBERTURA);
+}
+
+export async function marcarLibroCobertura() {
+  let actual = coberturaBase();
+  try {
+    const bytes = await bajar(RUTA_COBERTURA);
+    if (bytes) actual = JSON.parse(bytes.toString("utf8"));
+  } catch {
+    actual = coberturaBase();
+  }
+  actual.generado = new Date().toISOString();
+  return subirCobertura(actual);
 }
 
 export async function subirCobertura(json) {
@@ -494,5 +523,5 @@ export async function subirCobertura(json) {
     allowOverwrite: true,
     contentType: "application/json",
   });
-  return vistaCobertura(json, "blob");
+  return vistaCobertura(json, "blob", true);
 }

@@ -6,7 +6,7 @@ import { REPORTES } from "../lib/reportes";
 
 export default function Escritorio({ children }) {
   const pathname = usePathname();
-  const titulo = pathname.startsWith("/ventas/libro")
+  const titulo = pathname.startsWith("/ventas/libro") || pathname.startsWith("/cobertura/libro")
     ? "Libro"
     : pathname.startsWith("/ventas")
       ? "Ventas"
