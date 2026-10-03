@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
 
 const COLOR_CLAVE = "#003366";
@@ -21,6 +21,162 @@ function tarjeta(grupo) {
 
 function numero(valor) {
   return new Intl.NumberFormat("es-BO").format(valor ?? 0);
+}
+
+function pctTexto(valor) {
+  if (valor == null || valor === "") return "";
+  return `${valor}%`;
+}
+
+/** Agrupa filas planas (ciudad/circuito + totales) en bloques expandibles. */
+function gruposDeTabla(filas) {
+  const grupos = [];
+  let actual = null;
+  for (const fila of filas || []) {
+    if (fila.esTotal) {
+      if (/grand/i.test(fila.ciudad) || /^total$/i.test(fila.ciudad.trim())) {
+        grupos.push({ tipo: "grand", fila });
+        actual = null;
+        continue;
+      }
+      if (actual) {
+        actual.total = fila;
+        grupos.push(actual);
+        actual = null;
+      } else {
+        grupos.push({ tipo: "total", fila });
+      }
+      continue;
+    }
+    const nombreCiudad = fila.ciudad;
+    if (!actual || actual.ciudad !== nombreCiudad) {
+      if (actual) grupos.push(actual);
+      actual = { tipo: "ciudad", ciudad: nombreCiudad, circuitos: [fila], total: null };
+    } else {
+      actual.circuitos.push(fila);
+    }
+  }
+  if (actual) grupos.push(actual);
+  return grupos;
+}
+
+function TablaCiudadCircuito({ titulo, filas, conStock }) {
+  const grupos = useMemo(() => gruposDeTabla(filas), [filas]);
+  const [abiertas, setAbiertas] = useState(() => new Set());
+
+  useEffect(() => {
+    setAbiertas(new Set(grupos.filter((g) => g.tipo === "ciudad").map((g) => g.ciudad)));
+  }, [grupos]);
+
+  function toggle(ciudad) {
+    setAbiertas((prev) => {
+      const next = new Set(prev);
+      if (next.has(ciudad)) next.delete(ciudad);
+      else next.add(ciudad);
+      return next;
+    });
+  }
+
+  if (!filas?.length) return null;
+
+  return (
+    <article className="panel cobertura-tabla-panel">
+      <h2>{titulo}</h2>
+      <div className="tabla-scroll">
+        <table className="tabla-densa cobertura-pivot">
+          <thead>
+            <tr>
+              <th>Ciudad</th>
+              <th>Circuito</th>
+              <th>Total tiendas</th>
+              <th>Cuenta LK7</th>
+              <th>LK7 (L)</th>
+              <th>% LK7</th>
+              <th>% LK7K</th>
+              {conStock ? (
+                <>
+                  <th>Stock LK7</th>
+                  <th>Stock LK6</th>
+                </>
+              ) : null}
+            </tr>
+          </thead>
+          <tbody>
+            {grupos.map((g, gi) => {
+              if (g.tipo === "grand" || g.tipo === "total") {
+                const fila = g.fila;
+                return (
+                  <tr key={`t-${gi}`} className="fila-total">
+                    <td colSpan={2}>{fila.ciudad}</td>
+                    <td>{numero(fila.totalTiendas)}</td>
+                    <td>{numero(fila.lk7)}</td>
+                    <td>{numero(fila.lambo)}</td>
+                    <td>{pctTexto(fila.pctLk7)}</td>
+                    <td>{pctTexto(fila.pctLk7k)}</td>
+                    {conStock ? (
+                      <>
+                        <td>{numero(fila.stockLk7)}</td>
+                        <td>{numero(fila.stockLk6)}</td>
+                      </>
+                    ) : null}
+                  </tr>
+                );
+              }
+              const abierta = abiertas.has(g.ciudad);
+              const tot = g.total;
+              return (
+                <Fragment key={`c-${g.ciudad}`}>
+                  <tr className="fila-ciudad">
+                    <td>
+                      <button type="button" className="btn-texto" onClick={() => toggle(g.ciudad)}>
+                        {abierta ? "▾" : "▸"} {g.ciudad}
+                      </button>
+                    </td>
+                    <td colSpan={conStock ? 8 : 6} />
+                  </tr>
+                  {abierta
+                    ? g.circuitos.map((fila, i) => (
+                        <tr key={`${g.ciudad}-${fila.circuito}-${i}`} className="fila-circuito">
+                          <td />
+                          <td>{fila.circuito}</td>
+                          <td>{numero(fila.totalTiendas)}</td>
+                          <td>{numero(fila.lk7)}</td>
+                          <td>{numero(fila.lambo)}</td>
+                          <td>{pctTexto(fila.pctLk7)}</td>
+                          <td>{pctTexto(fila.pctLk7k)}</td>
+                          {conStock ? (
+                            <>
+                              <td>{numero(fila.stockLk7)}</td>
+                              <td>{numero(fila.stockLk6)}</td>
+                            </>
+                          ) : null}
+                        </tr>
+                      ))
+                    : null}
+                  {tot ? (
+                    <tr className="fila-total">
+                      <td colSpan={2}>{tot.ciudad}</td>
+                      <td>{numero(tot.totalTiendas)}</td>
+                      <td>{numero(tot.lk7)}</td>
+                      <td>{numero(tot.lambo)}</td>
+                      <td>{pctTexto(tot.pctLk7)}</td>
+                      <td>{pctTexto(tot.pctLk7k)}</td>
+                      {conStock ? (
+                        <>
+                          <td>{numero(tot.stockLk7)}</td>
+                          <td>{numero(tot.stockLk6)}</td>
+                        </>
+                      ) : null}
+                    </tr>
+                  ) : null}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </article>
+  );
 }
 
 async function esExcel(archivo) {
@@ -252,76 +408,15 @@ export default function Cobertura() {
             })}
           </div>
 
-          {datos.tablaTodas?.length ? (
-            <article className="panel cobertura-tabla-panel">
-              <h2>Todas las tiendas</h2>
-              <div className="tabla-scroll">
-                <table className="tabla-densa">
-                  <thead>
-                    <tr>
-                      <th>Ciudad</th>
-                      <th>Circuito</th>
-                      <th>Total tiendas</th>
-                      <th>Cuenta LK7</th>
-                      <th>LK7 (L)</th>
-                      <th>% LK7</th>
-                      <th>% LK7K</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {datos.tablaTodas.map((fila, i) => (
-                      <tr key={`todas-${i}`} className={fila.esTotal ? "fila-total" : undefined}>
-                        <td>{fila.ciudad}</td>
-                        <td>{fila.circuito}</td>
-                        <td>{numero(fila.totalTiendas)}</td>
-                        <td>{numero(fila.lk7)}</td>
-                        <td>{numero(fila.lambo)}</td>
-                        <td>{fila.pctLk7}%</td>
-                        <td>{fila.pctLk7k}%</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </article>
-          ) : null}
-
-          {datos.tablaTop300?.length ? (
-            <article className="panel cobertura-tabla-panel">
-              <h2>Tiendas Top 300</h2>
-              <div className="tabla-scroll">
-                <table className="tabla-densa">
-                  <thead>
-                    <tr>
-                      <th>Ciudad</th>
-                      <th>Circuito</th>
-                      <th>Total tiendas</th>
-                      <th>Cuenta LK7</th>
-                      <th>LK7 (L)</th>
-                      <th>% LK7</th>
-                      <th>% LK7K</th>
-                      <th>Stock LK7</th>
-                      <th>Stock LK6</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {datos.tablaTop300.map((fila, i) => (
-                      <tr key={`top-${i}`} className={fila.esTotal ? "fila-total" : undefined}>
-                        <td>{fila.ciudad}</td>
-                        <td>{fila.circuito}</td>
-                        <td>{numero(fila.totalTiendas)}</td>
-                        <td>{numero(fila.lk7)}</td>
-                        <td>{numero(fila.lambo)}</td>
-                        <td>{fila.pctLk7}%</td>
-                        <td>{fila.pctLk7k}%</td>
-                        <td>{numero(fila.stockLk7)}</td>
-                        <td>{numero(fila.stockLk6)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </article>
+          {datos.tablaTodas?.length || datos.tablaTop300?.length ? (
+            <div className="cobertura-dos-tablas">
+              <TablaCiudadCircuito titulo="Todas las tiendas" filas={datos.tablaTodas} conStock={false} />
+              <TablaCiudadCircuito titulo="Tiendas Top 300" filas={datos.tablaTop300} conStock />
+            </div>
+          ) : datos.tieneLibro ? (
+            <p className="sub explicacion">
+              Las tablas por ciudad y circuito se arman al abrir esta página o al subir de nuevo el Excel.
+            </p>
           ) : null}
         </>
       ) : null}

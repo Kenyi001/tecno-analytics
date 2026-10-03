@@ -592,7 +592,25 @@ export async function resumenCobertura() {
   }
   try {
     const bytes = await bajar(RUTA_COBERTURA);
-    if (bytes) return vistaCobertura(JSON.parse(bytes.toString("utf8")), "blob", tieneLibro);
+    if (bytes) {
+      const completo = JSON.parse(bytes.toString("utf8"));
+      if (!completo.tablaTodas?.length && tieneLibro) {
+        const libro = await bajar(RUTA_LIBRO_COBERTURA);
+        if (libro) {
+          await enriquecerCoberturaConTablas(completo, libro);
+          if (completo.tablaTodas?.length) {
+            await put(RUTA_COBERTURA, JSON.stringify(completo), {
+              access: "private",
+              token: token(),
+              addRandomSuffix: false,
+              allowOverwrite: true,
+              contentType: "application/json",
+            });
+          }
+        }
+      }
+      return vistaCobertura(completo, "blob", tieneLibro);
+    }
   } catch {
     // Si no hay Blob, se usa el cálculo guardado en el repo.
   }
@@ -684,14 +702,15 @@ export async function marcarLibroMayorista(opts = {}) {
 export async function enriquecerCoberturaConTablas(json, libroBuffer) {
   let tablas = null;
   if (libroBuffer) {
+    // Hoja2 = pivots del Excel (Todas / Top 300). SHOP = recálculo si no hay Hoja2.
     try {
-      tablas = await tablasDesdeShopBuffer(libroBuffer);
+      tablas = await tablasDesdeHoja2(libroBuffer);
     } catch {
       tablas = null;
     }
     if (!tablas?.tablaTodas?.length) {
       try {
-        tablas = await tablasDesdeHoja2(libroBuffer);
+        tablas = await tablasDesdeShopBuffer(libroBuffer);
       } catch {
         tablas = null;
       }
